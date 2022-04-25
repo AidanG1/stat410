@@ -41,18 +41,24 @@ movies <- read_csv('movie.csv')
 credits <- read_csv('credit.csv')
 # summary(credits)
 ```
-# [https://github.com/AidanG1/stat410](Source Code)
+# [Source Code](https://github.com/AidanG1/stat410)
 
-# Project statement <a href="#top">Back to top</a>
+# Project statement 
+<a href="#top">Back to top</a>
+
 #### What is the purpose of your analysis? What effect are you investigating? Why?
 The purpose of my analysis is to determine what movies I will enjoy the most. I will do this by creating a model with the response variable of how much I liked a movie out of 100 and predicting it with data on various movie reviews, genres, cast and crew, and more. I am doing this so that I can figure out which movies I will want to watch because I can be confident that I will enjoy them.
 
-# Data description <a href="#top">Back to top</a>
+# Data description 
+<a href="#top">Back to top</a>
+
 #### How were the data collected? How do these data help you answer the relevant research questions?
 The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/. In the references there is python code I wrote to turn the mySQL database into a csv.
 Data from TMDB was collected using their open API. Data from IMDB was collected by web scraping their page for awards and finding any Oscars as well as scraping their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
 
-# Exploratory data analysis <a href="#top">Back to top</a>
+# Exploratory data analysis 
+<a href="#top">Back to top</a>
+
 #### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
 None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, in an MLR setting other variables within a specific range work best if they are not transformed such as IMDB rating, between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. When attempting to use uncapped data, they were insignificant. This is evident when looking at IMDB count vs IMDB Top 1000 Count. When using a log transformation, the full IMDB count becomes more significant which makes sense since it includes more data.
 ```{r, cols.min.print=3}
@@ -62,7 +68,7 @@ movies_to_print
 
 ```{r echo=FALSE, results=FALSE}
 continuous_movies_no_na = movies %>% select(my_rating, imdb_rating, tmdb_rating, tmdb_count, metacritic_rating, budget, revenue, award_count, imdb_count, imdb_arithmetic_mean, imdb_median, imdb_top_1000_rating, imdb_top_1000_count, imdb_us_rating, imdb_us_count, imdb_not_us_rating, imdb_not_us_count) %>% drop_na() # a version of the main dataset where rows with NA metacritic ratings are dropped. Metacritic ratings are the only ones that have NA values since some movies are not reviewed by critics on that site.
-continuous_movies_no_na %>% cor()
+# continuous_movies_no_na %>% cor()
 ```
 
 ```{r}
@@ -108,22 +114,22 @@ continuous_movies = movies %>% # main dplyr code to create the tbl
     is_leonardo_dicaprio = batch_credit_filter(uuid,'FuCDtnxehhqRrKqh9qC7Dj'),
     is_the_rock = batch_credit_filter(uuid,'VbfEpXpRyzNfjTppSLU9ei'),
     is_stanley_kubrick = batch_credit_filter(uuid,'PfnG2E5kKDAM2PrrUdW9jk'),
-    is_john_hughes = batch_credit_filter(uuid,'CkytgUXum2syFtLkgy9dyi'),
+    # is_john_hughes = batch_credit_filter(uuid,'CkytgUXum2syFtLkgy9dyi'),
     is_jim_carrey = batch_credit_filter(uuid,'T2K6TBzwq2qavcVFeGL8Rc'),
     is_wally_pfister = batch_credit_filter(uuid,'L8jtAQbm3ynBna4857d5j2'),
     is_henry_fonda = batch_credit_filter(uuid,'K5qeaJKmMQen8dMEqY75F4'),
     is_morgan_freeman = batch_credit_filter(uuid,'FHCFi8DwCzoJbCRC34DMRj'),
-    is_bong_joon_ho = batch_credit_filter(uuid,'VhJUKLUtNBFJsHcSTiAyMy'),
-    is_dustin_hoffman = batch_credit_filter(uuid,'gc7HESshGq5Lh7gD2MH6wR'),
-    is_arnold_schwarz = batch_credit_filter(uuid,'JYP3ANQFwkmsQYPGwj77gk'),
+    # is_bong_joon_ho = batch_credit_filter(uuid,'VhJUKLUtNBFJsHcSTiAyMy'),
+    # is_dustin_hoffman = batch_credit_filter(uuid,'gc7HESshGq5Lh7gD2MH6wR'),
+    # is_arnold_schwarz = batch_credit_filter(uuid,'JYP3ANQFwkmsQYPGwj77gk'),
     is_jack_nicholson = batch_credit_filter(uuid,'VxqAcnJqT6d7vjcHcpXQoL'),
-    is_aamir_khan = batch_credit_filter(uuid,'jWk22meEpdCAhTdpKCfBxg'),
+    # is_aamir_khan = batch_credit_filter(uuid,'jWk22meEpdCAhTdpKCfBxg'),
     is_sean_connery = batch_credit_filter(uuid,'57UUtEPqsvkpCSmeGPraq8'),
     is_brad_bird = batch_credit_filter(uuid,'AbANa443DEn6zfpidFA73z'),
     is_natalie_portman = batch_credit_filter(uuid,'JSN7GommYrTooGeh5WzvPg'),
-    is_robin_williams = batch_credit_filter(uuid,'C56iyMS2VJXc6gnW3ezcDC'),
-    is_sandra_bullock = batch_credit_filter(uuid,'efknfaN8AeojtnMGCfzVR8'),
-    is_bill_murray = batch_credit_filter(uuid,'aDeM2LwCunLFnKR4YaziPa'),
+    # is_robin_williams = batch_credit_filter(uuid,'C56iyMS2VJXc6gnW3ezcDC'),
+    # is_sandra_bullock = batch_credit_filter(uuid,'efknfaN8AeojtnMGCfzVR8'),
+    # is_bill_murray = batch_credit_filter(uuid,'aDeM2LwCunLFnKR4YaziPa'),
   ) %>% select(-genres_names,-uuid)
 cor_matrix = continuous_movies %>% select(-name) %>% cor()# creating correlation matrix
 cor_matrix[1,]
@@ -156,10 +162,14 @@ pairs(high_cor_cm) # graphing pairs of specific values
 ```
 
 # Data analysis
+ <a href="#top">Back to top</a>
+
 #### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
 I tried fitting many different models including SLRs, MLRs, polynomials, montone transformations, ridge, lasso, and GAMs.
 
-# Models <a href="#top">Back to top</a>
+# Models 
+<a href="#top">Back to top</a>
+
 ## SLR
 ```{r}
 # begin with some simple models
@@ -357,10 +367,19 @@ budget_0 = mean(budget_0$imdb_count)
 ```
 For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, more than 10 times smaller.
 
-# Summary and discussion <a href="#top">Back to top</a>
+# Summary and discussion 
+<a href="#top">Back to top</a>
+
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
 
 Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includesa smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam4)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
+
+```{r echo=FALSE}
+coefs = coef(summary(fit_bic))
+```
+
+Interpretation. A movie with an IMDB rating of 0, that has been seen by 1 person, and does not have John Williams would be expected to have a rating of `r coefs[1]`. For each 1 unit increase in IMDB rating, holding all else equal, my expected rating increases by `r coefs[1]`. For each 1 unit increase in log(IMDB count), holding all else equal, my expected rating increases by `r coefs[2]`. If John Williams is credited in the movie, holding all else equal, my expected rating increases by `r coefs[3]`.
+
 My largest conclusion in this project is that predicting my ratings if very difficult and that adjusted r squared of around 0.47 are the best I am going to do. I reached this conclusion since I fit many different models and ended up with results consistently similar despite highly different betas. Even with these varied betas, models consistently overpredicted low values and undepredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
 
 ```{r echo=FALSE}
@@ -392,18 +411,27 @@ abline(0,1)
 
 ## Predictions
 
+The movies being predicted are the most reviewed movies on IMDB that I have not seen. In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.
+
 ```{r}
-most_reviewed = data.frame()
+most_reviewed = data.frame(imdb_rating=c(8.3,8.6,8.6,8.5,8.2,8.6,7.9,8.4,8.5,8.4,1.9),imdb_count=c(1389883,1381370,1342619,1282577,1253738,1253525,1130852,1130000,1094160,1014965,38184),is_john_williams=c(0,0,1,0,0,0,0,0,0,0,0))
 predictions = predict(fit_bic, most_reviewed, interval="prediction")
+predictions
 ```
 
-# References <a href="#top">Back to top</a>
+These predictions are mostly reasonable but they do fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible and the model will attempt to avoid it.
+
+Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and with careful variable, it is possible to get a relatively accurate model with high interpretability.
+
+# References 
+<a href="#top">Back to top</a>
+
 #### What are the sources for the data and any additional statistical resources that you used to support your analysis?
 
 * Data sources:
-  + [https://www.themoviedb.org/documentation/api](TMDB API)
-  + [https://www.imdb.com/](IMDB Website)
-  + [https://www.tradethisandthat.com/movies/](Personal Movie Website)
+  + [TMDB API](https://www.themoviedb.org/documentation/api)
+  + [IMDB Website](https://www.imdb.com/)
+  + [Personal Movie Website](https://www.tradethisandthat.com/movies/)
 ```{py, results=FALSE}
 from django.core.management.base import BaseCommand
 from movies.models import *
@@ -505,6 +533,8 @@ class Command(BaseCommand):
                         [credit.uuid, credit.person_id, credit.movie_id, credit.department, credit.character_job,
                          credit.order, credit.order_score, credit.credit_order_weighted_score])
 ```
-# Code and data <a href="#top">Back to top</a>
+# Code and data 
+<a href="#top">Back to top</a>
+
 #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
 Code and data included throughout.
