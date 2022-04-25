@@ -1,5 +1,5 @@
 ---
-# knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "April 29th, 2022"
