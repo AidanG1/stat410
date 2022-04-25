@@ -27,10 +27,13 @@ header-includes: \usepackage{setspace}
 ```{r setup, include=FALSE}
 # for PDF full
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
+# SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
 # knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
+# SHOW_BACK_TO_TOP=FALSE
 # for html with svg
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
+SHOW_BACK_TO_TOP=TRUE
 ```
 
 ```{r imports, echo=FALSE, cols.min.print=3}
@@ -42,24 +45,34 @@ movies <- read_csv('movie.csv')
 credits <- read_csv('credit.csv')
 # summary(credits)
 ```
-# [Aidan's Movies](https://www.tradethisandthat.com/movies/)
-# [Source Code](https://github.com/AidanG1/stat410)
 
-# Project statement 
-<a href="#top">Back to top</a>
+```{r conditional_block0, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat("# [Aidan's Movies](https://www.tradethisandthat.com/movies/)
+# [Source Code](https://github.com/AidanG1/stat410)")
+```
+
+# Project statement
+```{r conditional_block1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 
 #### What is the purpose of your analysis? What effect are you investigating? Why?
 The purpose of my analysis is to determine what movies I will enjoy the most. I will do this by creating a model with the response variable of how much I liked a movie out of 100 and predicting it with data on various movie reviews, genres, cast and crew, and more. I am doing this so that I can figure out which movies I will want to watch because I can be confident that I will enjoy them.
 
-# Data description 
-<a href="#top">Back to top</a>
+# Data description
+```{r conditional_block2, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### How were the data collected? How do these data help you answer the relevant research questions?
 The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/. In the references there is python code I wrote to turn the mySQL database into a csv.
 Data from TMDB was collected using their open API. Data from IMDB was collected by web scraping their page for awards and finding any Oscars as well as scraping their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
 
 # Exploratory data analysis 
-<a href="#top">Back to top</a>
+```{r conditional_block3, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
 None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, in an MLR setting other variables within a specific range work best if they are not transformed such as IMDB rating, between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. When attempting to use uncapped data, they were insignificant. This is evident when looking at IMDB count vs IMDB Top 1000 Count. When using a log transformation, the full IMDB count becomes more significant which makes sense since it includes more data.
@@ -152,17 +165,16 @@ The next step was to make mpaa_name a numeric factor allowing it to be used as a
 
 After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns.
 
-Finally, it was time to use dplyr to get the dataset. I began by arranging by IMDB rating since Metacritic ratings are most related to IMDB ratings. Then, I selected the desired columns from the larger dataset. After that, I created dummy variables for both genres and crew.
+Finally, it was time to use dplyr to get the dataset. I began by arranging by IMDB rating since Metacritic ratings are most related to IMDB ratings. Then, I selected the desired columns from the larger dataset. After that, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
 
-* I chose every genre that I have seen more than 100 movies from. 
-  + Comedy(`r sum(continuous_movies$is_comedy)`)
-  + Adventure(`r sum(continuous_movies$is_adventure)`)
-  + Action(`r sum(continuous_movies$is_action)`)
-  + Drama(`r sum(continuous_movies$is_drama)`)
-  + Family(`r sum(continuous_movies$is_family)`)
-  + Science Fiction(`r sum(continuous_movies$is_scifi)`)
-  + Animation(`r sum(continuous_movies$is_animation)`)
-  + Thriller(`r sum(continuous_movies$is_thriller)`)
+* Comedy(`r sum(continuous_movies$is_comedy)`)
+* Adventure(`r sum(continuous_movies$is_adventure)`)
+* Action(`r sum(continuous_movies$is_action)`)
+* Drama(`r sum(continuous_movies$is_drama)`)
+* Family(`r sum(continuous_movies$is_family)`)
+* Science Fiction(`r sum(continuous_movies$is_scifi)`)
+* Animation(`r sum(continuous_movies$is_animation)`)
+* Thriller(`r sum(continuous_movies$is_thriller)`)
 
 Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to significant and have them whittled down through AIC and BIC.
 
@@ -174,13 +186,17 @@ pairs(high_cor_cm) # graphing pairs of specific values
 ```
 
 # Data analysis
- <a href="#top">Back to top</a>
+```{r conditional_block4, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
 I tried fitting many different models including SLRs, MLRs, polynomials, montone transformations, ridge, lasso, and GAMs.
 
 # Models
-<a href="#top">Back to top</a>
+```{r conditional_block5, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 ## SLR
 ```{r slr}
@@ -304,10 +320,11 @@ legend(x = "topleft", title="Models",
 abline(0,1)
 ```
 
-* Adjusted R Squared at 1 standard deviation for ridge and lasso:
-  + ridge: `r fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)]`
-  + lasso: `r fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)]`
-  + mlr: `r summary(fit_lm)$adj.r.squared`
+Adjusted R Squared at 1 standard deviation for ridge and lasso:
+
+* ridge: `r fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)]`
+* lasso: `r fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)]`
+* mlr: `r summary(fit_lm)$adj.r.squared`
 
 Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values IMDB count and IMDB rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
 
@@ -375,7 +392,7 @@ The fit plots have been withheld for spacing reasons.
 For the first gam:
 IMDB rating and metacritic rating are linear. TMDB rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in TMDB rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. IMDB count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating. IMDB arithmetic rating is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the public IMDB rating is calculated vs the arithmetic mean. The public IMDB rating is calculated using a secret formula to prevent review bombing and is actually a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean and that the weighted average used by IMDB is useful. 
 
-```{r, echo=FALSE}
+```{r budget_0, include=FALSE}
 budget_not0 = continuous_movies%>%filter(budget!=0)
 budget_0 = continuous_movies%>%filter(budget==0)
 budget_not0 = mean(budget_not0$imdb_count)
@@ -384,13 +401,15 @@ budget_0 = mean(budget_0$imdb_count)
 For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, more than 10 times smaller.
 
 # Summary and discussion 
-<a href="#top">Back to top</a>
+```{r conditional_block6, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
 
 Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includesa smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
 
-```{r echo=FALSE}
+```{r coef, include=FALSE}
 coefs = coef(summary(fit_bic))
 ```
 
@@ -398,45 +417,40 @@ Interpretation. A movie with an IMDB rating of 0, that has been seen by 1 person
 
 My largest conclusion in this project is that predicting my ratings if very difficult and that adjusted r squared of around 0.47 are the best I am going to do. I reached this conclusion since I fit many different models and ended up with results consistently similar despite highly different betas. Even with these varied betas, models consistently overpredicted low values and undepredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
 
-```{r include=FALSE}
+```{r top5_bottom5, include=FALSE}
 top5=continuous_movies[topn(fit_bic$residuals, 5L, decreasing = TRUE, index=TRUE),]$name
 top5_values = as.numeric(topn(fit_bic$residuals, 5L, decreasing = TRUE,index=FALSE))
 bottom5=continuous_movies[topn(fit_bic$residuals, 5L, decreasing = FALSE, index=TRUE),]$name
 bottom5_values = as.numeric(topn(fit_bic$residuals, 5L, decreasing = FALSE,index=FALSE))
 ```
-* Fit BIC Outliers
-  + `r top5[1]`: `r top5_values[1]`
-  + `r top5[2]`: `r top5_values[2]`
-  + `r top5[3]`: `r top5_values[3]`
-  + `r top5[4]`: `r top5_values[4]`
-  + `r top5[5]`: `r top5_values[5]`
-  + `r bottom5[1]`: `r bottom5_values[1]`
-  + `r bottom5[2]`: `r bottom5_values[2]`
-  + `r bottom5[3]`: `r bottom5_values[3]`
-  + `r bottom5[4]`: `r bottom5_values[4]`
-  + `r bottom5[5]`: `r bottom5_values[5]`
+Fit BIC Outliers
+
+* `r top5[1]`: `r top5_values[1]`
+* `r top5[2]`: `r top5_values[2]`
+* `r top5[3]`: `r top5_values[3]`
+* `r top5[4]`: `r top5_values[4]`
+* `r top5[5]`: `r top5_values[5]`
+* `r bottom5[1]`: `r bottom5_values[1]`
+* `r bottom5[2]`: `r bottom5_values[2]`
+* `r bottom5[3]`: `r bottom5_values[3]`
+* `r bottom5[4]`: `r bottom5_values[4]`
+* `r bottom5[5]`: `r bottom5_values[5]`
 
 
-```{r echo=FALSE}
+```{r bic_plot, echo=FALSE}
 residual_threshold = 33
 high_residuals = continuous_movies %>% mutate(
   fitted = fit_bic$fitted.values,
   label = ifelse(abs(fit_bic$residuals)>residual_threshold|fitted>85|fitted<15,name,'')
 )
-ggplot(high_residuals, xlim=c(0,100),ylim=c(0,100)) + geom_point(aes(x = my_rating, y = fit_bic$fitted.values), color=ifelse(abs(fit_bic$residuals)>residual_threshold,"firebrick4","aquamarine3")) + geom_abline(aes(intercept=0,slope=1)) + labs(x="My Rating",y="Fitted Values", title="My Rating vs Fitted Values") + geom_text_repel(data=high_residuals, aes(x=my_rating, y=fitted, label=label),max.overlaps = Inf)
-
-# plot(continuous_movies$my_rating, fit_bic$fitted.values)
-# legend(x = "topleft", title="Models", bg="transparent",
-#        legend=c("BIC"), 
-#        fill = c("aquamarine3"))
-# text(high_residuals_names$my_rating, high_residuals_fitted - 1, labels=substr(high_residuals_names$name,1,10))
+ggplot(high_residuals, xlim=c(0,100),ylim=c(0,100)) + geom_point(data=high_residuals, aes(x = my_rating, y = fit_bic$fitted.values), color=ifelse(high_residuals$label != '',"firebrick4","aquamarine3")) + geom_abline(aes(intercept=0,slope=1)) + labs(x="My Rating",y="Fitted Values", title="BIC My Rating vs Fitted Values") + geom_text_repel(data=high_residuals, aes(x=my_rating, y=fitted, label=label),max.overlaps = Inf)
 ```
 
 ## Predictions
 
 The movies being predicted are the most reviewed movies on IMDB that I have not seen. In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.
 
-```{r}
+```{r predictions, include=TRUE}
 most_reviewed = data.frame(imdb_rating=c(8.3,8.6,8.6,8.5,8.2,8.6,7.9,8.4,8.5,8.4,1.9),imdb_count=c(1389883,1381370,1342619,1282577,1253738,1253525,1130852,1130000,1094160,1014965,38184),is_john_williams=c(0,0,1,0,0,0,0,0,0,0,0))
 predictions = predict(fit_bic, most_reviewed, interval="prediction")
 predictions
@@ -447,15 +461,18 @@ These predictions are mostly reasonable but they do fall within very large range
 Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and with careful variable, it is possible to get a relatively accurate model with high interpretability.
 
 # References 
-<a href="#top">Back to top</a>
+```{r conditional_block7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### What are the sources for the data and any additional statistical resources that you used to support your analysis?
 
-* Data sources:
-  + [TMDB API](https://www.themoviedb.org/documentation/api)
-  + [IMDB Website](https://www.imdb.com/)
-  + [Personal Movie Website](https://www.tradethisandthat.com/movies/)
-```{py, results=FALSE}
+Data sources:
+
+* [TMDB API](https://www.themoviedb.org/documentation/api)
+* [IMDB Website](https://www.imdb.com/)
+* [Personal Movie Website](https://www.tradethisandthat.com/movies/)
+```{py django, results=FALSE}
 from django.core.management.base import BaseCommand
 from movies.models import *
 import csv, os
@@ -557,9 +574,11 @@ class Command(BaseCommand):
                          credit.order, credit.order_score, credit.credit_order_weighted_score])
 ```
 # Code and data 
-<a href="#top">Back to top</a>
+```{r conditional_block8, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
 Code and data included throughout.
 
-Datasets available on [Github](https://github.com/AidanG1/stat410) and on the hosted version of the html: [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies](https://stat.aidang.me/continuous_movies)
+Datasets available on [Github](https://github.com/AidanG1/stat410) and on the hosted version of the html: [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf)
