@@ -1,4 +1,5 @@
 ---
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "4/29/2022"
@@ -24,8 +25,8 @@ header-includes: \usepackage{setspace}
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # for PDF no code
 # knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
-# for html
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svg')
+# for html with svg
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite')
 ```
 
 ```{r, echo=FALSE, cols.min.print=3}
@@ -63,15 +64,12 @@ imdb_mlr = lm(metacritic_rating ~ imdb_rating + award_count + imdb_top_1000_rati
 
 movies$mpaa_name = as.numeric(as.factor(movies$mpaa_name)) # turning mpaa_name into a factor so that it can be used for levels.
 
-batch_credit_filter = function(movie_ids, person_ids) {
+batch_credit_filter = function(movie_ids, person_id_param) {
   # function to create dummy variables of whether a person with a specific id appears in a movie
-  results = data.frame(matrix(ncol = length(person_ids), nrow = 0))
+  results = c()
   for (i in 1:length(movie_ids)) {
-    for (j in 1:length(person_ids)) {
     creds = credits %>% filter(movie_id==movie_ids[i])
     results = append(results, ifelse(person_id_param %in% creds$person_id, 1, 0))
-   
-    }
   }
   results
 }
@@ -354,7 +352,15 @@ For budget, there is a quick slope upward at the beginning revealing that a perc
 
 # Summary and discussion
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
-The main conclusions of my analysis 
+
+Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includesa smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam4)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
+```{r echo=FALSE}
+plot(continuous_movies$my_rating, fit_gam4$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="aquamarine3")
+legend(x = "topleft", title="Models", bg="transparent",
+       legend=c("GAM with BIC Variables"), 
+       fill = c("aquamarine3"))
+abline(0,1)
+```
 
 # References
 #### What are the sources for the data and any additional statistical resources that you used to support your analysis?
