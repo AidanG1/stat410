@@ -2,18 +2,22 @@
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
-date: "4/29/2022"
+date: "April 29th, 2022"
 output:
-  html_document:
-    toc: yes
-    toc_depth: '3'
-    df_print: paged
   prettydoc::html_pretty:
     toc: yes
     toc_depth: 3
     theme: cayman
     highlight: tango
     df_print: paged
+    includes:
+      in_header: header.html
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+    includes:
+      in_header: header.html
   pdf_document:
     toc: yes
     toc_depth: '3'
@@ -26,27 +30,29 @@ header-includes: \usepackage{setspace}
 # for PDF no code
 # knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
 # for html with svg
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite')
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
 ```
 
 ```{r, echo=FALSE, cols.min.print=3}
 library(tidyverse)
 library(zoo)
+library(kit)
 movies <- read_csv('movie.csv')
 credits <- read_csv('credit.csv')
 # summary(credits)
 ```
+# [https://github.com/AidanG1/stat410](Source Code)
 
-# Project statement
+# Project statement <a href="#top">Back to top</a>
 #### What is the purpose of your analysis? What effect are you investigating? Why?
 The purpose of my analysis is to determine what movies I will enjoy the most. I will do this by creating a model with the response variable of how much I liked a movie out of 100 and predicting it with data on various movie reviews, genres, cast and crew, and more. I am doing this so that I can figure out which movies I will want to watch because I can be confident that I will enjoy them.
 
-# Data description
+# Data description <a href="#top">Back to top</a>
 #### How were the data collected? How do these data help you answer the relevant research questions?
 The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/. In the references there is python code I wrote to turn the mySQL database into a csv.
 Data from TMDB was collected using their open API. Data from IMDB was collected by web scraping their page for awards and finding any Oscars as well as scraping their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
 
-# Exploratory data analysis
+# Exploratory data analysis <a href="#top">Back to top</a>
 #### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
 None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, in an MLR setting other variables within a specific range work best if they are not transformed such as IMDB rating, between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. When attempting to use uncapped data, they were insignificant. This is evident when looking at IMDB count vs IMDB Top 1000 Count. When using a log transformation, the full IMDB count becomes more significant which makes sense since it includes more data.
 ```{r, cols.min.print=3}
@@ -153,7 +159,7 @@ pairs(high_cor_cm) # graphing pairs of specific values
 #### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
 I tried fitting many different models including SLRs, MLRs, polynomials, montone transformations, ridge, lasso, and GAMs.
 
-# Models
+# Models <a href="#top">Back to top</a>
 ## SLR
 ```{r}
 # begin with some simple models
@@ -261,6 +267,7 @@ abline(0,1)
   + ridge: `r fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)]`
   + lasso: `r fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)]`
   + mlr: `r summary(fit_lm)$adj.r.squared`
+
 Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values IMDB count and IMDB rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
 
 
@@ -330,7 +337,7 @@ legend(x = "topleft", title="Models", bg="transparent",
 abline(0,1)
 ```
 
-```{r, results='hide', fig.show='hide'}
+```{r, echo=FALSE, results='hide', fig.show='hide'}
 plot(fit_gam1)
 plot(fit_gam2)
 plot(fit_gam3)
@@ -350,19 +357,47 @@ budget_0 = mean(budget_0$imdb_count)
 ```
 For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, more than 10 times smaller.
 
-# Summary and discussion
+# Summary and discussion <a href="#top">Back to top</a>
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
 
 Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includesa smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam4)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
+My largest conclusion in this project is that predicting my ratings if very difficult and that adjusted r squared of around 0.47 are the best I am going to do. I reached this conclusion since I fit many different models and ended up with results consistently similar despite highly different betas. Even with these varied betas, models consistently overpredicted low values and undepredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
+
 ```{r echo=FALSE}
-plot(continuous_movies$my_rating, fit_gam4$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="aquamarine3")
+top5=continuous_movies[topn(fit_bic$residuals, 5L, decreasing = TRUE, index=TRUE),]$name
+top5_values = as.numeric(topn(fit_bic$residuals, 5L, decreasing = TRUE,index=FALSE))
+bottom5=continuous_movies[topn(fit_bic$residuals, 5L, decreasing = FALSE, index=TRUE),]$name
+bottom5_values = as.numeric(topn(fit_bic$residuals, 5L, decreasing = FALSE,index=FALSE))
+```
+* Fit BIC Outliers
+  + `r top5[1]`: `r top5_values[1]`
+  + `r top5[2]`: `r top5_values[2]`
+  + `r top5[3]`: `r top5_values[3]`
+  + `r top5[4]`: `r top5_values[4]`
+  + `r top5[5]`: `r top5_values[5]`
+  + `r bottom5[1]`: `r bottom5_values[1]`
+  + `r bottom5[2]`: `r bottom5_values[2]`
+  + `r bottom5[3]`: `r bottom5_values[3]`
+  + `r bottom5[4]`: `r bottom5_values[4]`
+  + `r bottom5[5]`: `r bottom5_values[5]`
+
+
+```{r echo=FALSE}
+plot(continuous_movies$my_rating, fit_bic$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="aquamarine3")
 legend(x = "topleft", title="Models", bg="transparent",
-       legend=c("GAM with BIC Variables"), 
+       legend=c("BIC"), 
        fill = c("aquamarine3"))
 abline(0,1)
 ```
 
-# References
+## Predictions
+
+```{r}
+most_reviewed = data.frame()
+predictions = predict(fit_bic, most_reviewed, interval="prediction")
+```
+
+# References <a href="#top">Back to top</a>
 #### What are the sources for the data and any additional statistical resources that you used to support your analysis?
 
 * Data sources:
@@ -470,6 +505,6 @@ class Command(BaseCommand):
                         [credit.uuid, credit.person_id, credit.movie_id, credit.department, credit.character_job,
                          credit.order, credit.order_score, credit.credit_order_weighted_score])
 ```
-# Code and data
+# Code and data <a href="#top">Back to top</a>
 #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
 Code and data included throughout.
