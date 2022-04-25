@@ -212,75 +212,65 @@ makes sense since it includes more data.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{create\_continuous\_movies }\OtherTok{=} \ControlFlowTok{function}\NormalTok{() \{}
-\NormalTok{  imdb\_mlr }\OtherTok{=} \FunctionTok{lm}\NormalTok{(metacritic\_rating }\SpecialCharTok{\textasciitilde{}}\NormalTok{ imdb\_rating }\SpecialCharTok{+}\NormalTok{ award\_count }\SpecialCharTok{+}\NormalTok{ imdb\_top\_1000\_rating, }\AttributeTok{data=}\NormalTok{continuous\_movies\_no\_na) }\CommentTok{\# creating a basic MLR to interpolate metacritic ratings from imdb ratings}
-  
-\NormalTok{  movies}\SpecialCharTok{$}\NormalTok{mpaa\_name }\OtherTok{=} \FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(movies}\SpecialCharTok{$}\NormalTok{mpaa\_name)) }\CommentTok{\# turning mpaa\_name into a factor so that it can be used for levels.}
-  
-\NormalTok{  batch\_credit\_filter }\OtherTok{=} \ControlFlowTok{function}\NormalTok{(movie\_ids, person\_id\_param) \{}
-    \CommentTok{\# function to create dummy variables of whether a person with a specific id appears in a movie}
-\NormalTok{    results }\OtherTok{=} \FunctionTok{c}\NormalTok{()}
-    \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\FunctionTok{length}\NormalTok{(movie\_ids)) \{}
-\NormalTok{      creds }\OtherTok{=}\NormalTok{ credits }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{filter}\NormalTok{(movie\_id}\SpecialCharTok{==}\NormalTok{movie\_ids[i])}
-\NormalTok{      results }\OtherTok{=} \FunctionTok{append}\NormalTok{(results, }\FunctionTok{ifelse}\NormalTok{(person\_id\_param }\SpecialCharTok{\%in\%}\NormalTok{ creds}\SpecialCharTok{$}\NormalTok{person\_id, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{))}
-\NormalTok{    \}}
-\NormalTok{    results}
+\NormalTok{imdb\_mlr }\OtherTok{=} \FunctionTok{lm}\NormalTok{(metacritic\_rating }\SpecialCharTok{\textasciitilde{}}\NormalTok{ imdb\_rating }\SpecialCharTok{+}\NormalTok{ award\_count }\SpecialCharTok{+}\NormalTok{ imdb\_top\_1000\_rating, }\AttributeTok{data=}\NormalTok{continuous\_movies\_no\_na) }\CommentTok{\# creating a basic MLR to interpolate metacritic ratings from imdb ratings}
+
+\NormalTok{movies}\SpecialCharTok{$}\NormalTok{mpaa\_name }\OtherTok{=} \FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(movies}\SpecialCharTok{$}\NormalTok{mpaa\_name)) }\CommentTok{\# turning mpaa\_name into a factor so that it can be used for levels.}
+
+\NormalTok{batch\_credit\_filter }\OtherTok{=} \ControlFlowTok{function}\NormalTok{(movie\_ids, person\_id\_param) \{}
+  \CommentTok{\# function to create dummy variables of whether a person with a specific id appears in a movie}
+\NormalTok{  results }\OtherTok{=} \FunctionTok{c}\NormalTok{()}
+  \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\FunctionTok{length}\NormalTok{(movie\_ids)) \{}
+\NormalTok{    creds }\OtherTok{=}\NormalTok{ credits }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{filter}\NormalTok{(movie\_id}\SpecialCharTok{==}\NormalTok{movie\_ids[i])}
+\NormalTok{    results }\OtherTok{=} \FunctionTok{append}\NormalTok{(results, }\FunctionTok{ifelse}\NormalTok{(person\_id\_param }\SpecialCharTok{\%in\%}\NormalTok{ creds}\SpecialCharTok{$}\NormalTok{person\_id, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{))}
 \NormalTok{  \}}
-  
-\NormalTok{  continuous\_movies }\OtherTok{=}\NormalTok{ movies }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# main dplyr code to create the tbl}
-    \FunctionTok{arrange}\NormalTok{(imdb\_rating) }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# since Metacritic ratings have the highest correlation to IMDB ratings}
-    \FunctionTok{select}\NormalTok{(uuid,name,my\_rating, imdb\_rating, tmdb\_rating, tmdb\_count, metacritic\_rating, budget, revenue, runtime, award\_count, imdb\_count, imdb\_arithmetic\_mean, imdb\_median, imdb\_top\_1000\_rating, imdb\_top\_1000\_count, imdb\_us\_rating, imdb\_us\_count, imdb\_not\_us\_rating, imdb\_not\_us\_count,genres\_names,mpaa\_name,imdb\_rating\_percentile,tmdb\_rating\_percentile,metacritic\_rating\_percentile) }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# selecting useful continuous columns}
-    \FunctionTok{mutate}\NormalTok{(}\AttributeTok{metacritic\_rating =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(metacritic\_rating), }\FunctionTok{predict}\NormalTok{(imdb\_mlr,}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{imdb\_rating=}\NormalTok{imdb\_rating, }\AttributeTok{award\_count=}\NormalTok{award\_count,}\AttributeTok{imdb\_top\_1000\_rating=}\NormalTok{imdb\_top\_1000\_rating)), metacritic\_rating)) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{mutate}\NormalTok{( }\CommentTok{\# interpolating NA metacritic values}
-      \AttributeTok{is\_action =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Action\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{), }\CommentTok{\# creating dummy variables for different genres}
-      \AttributeTok{is\_comedy =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Comedy\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_adventure =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Adventure\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_animation =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Animation\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_family =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Family\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_drama =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Drama\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_scifi =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Science Fiction\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_thriller =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Thriller\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
-      \AttributeTok{is\_brad\_pitt =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}Laq4vXpGTZpfFFqDcHs5KV\textquotesingle{}}\NormalTok{), }\CommentTok{\# creating dummy variables for crew members to test significance}
-      \AttributeTok{is\_stan\_lee =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}QzvrSM5wqckocFLj3AEZaV\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_christopher\_nolan =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}keZ3UQoTZ4XZKb79VUXDgG\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_spielberg =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}naF68ZLuf7v6upwViuNVUm\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_harrison\_ford =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}GTw4tYdeQmWQ6YdgAa3hGu\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_matt\_damon =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}czP9E4RMt6u9sfTTML9eMR\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_wes\_anderson =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}JVxsaqF8Rxzy3CVxzvQWnd\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_tom\_cruise =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}e4Eiprq53YfhZvwmc8SrLr\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_john\_williams =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}DyCbZvFwBgugBpjDaqx8kk\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_rdj =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}Bpb5BiRdou7xQHjbU7GUDv\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_quentin\_tarantino =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}QLKZWkzmAovVDJXZN8eu3v\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_tom\_hanks =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}7tqrqC9rgLHtXckENws9Fy\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_george\_lucas =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}DRdnxAsNAZAp7HYsspMMtz\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_leonardo\_dicaprio =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}FuCDtnxehhqRrKqh9qC7Dj\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_the\_rock =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}VbfEpXpRyzNfjTppSLU9ei\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_stanley\_kubrick =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}PfnG2E5kKDAM2PrrUdW9jk\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_john\_hughes =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}CkytgUXum2syFtLkgy9dyi\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_jim\_carrey =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}T2K6TBzwq2qavcVFeGL8Rc\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_wally\_pfister =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}L8jtAQbm3ynBna4857d5j2\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_henry\_fonda =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}K5qeaJKmMQen8dMEqY75F4\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_morgan\_freeman =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}FHCFi8DwCzoJbCRC34DMRj\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_bong\_joon\_ho =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}VhJUKLUtNBFJsHcSTiAyMy\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_dustin\_hoffman =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}gc7HESshGq5Lh7gD2MH6wR\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_arnold\_schwarz =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}JYP3ANQFwkmsQYPGwj77gk\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_jack\_nicholson =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}VxqAcnJqT6d7vjcHcpXQoL\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_aamir\_khan =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}jWk22meEpdCAhTdpKCfBxg\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_sean\_connery =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}57UUtEPqsvkpCSmeGPraq8\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_brad\_bird =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}AbANa443DEn6zfpidFA73z\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_natalie\_portman =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}JSN7GommYrTooGeh5WzvPg\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_robin\_williams =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}C56iyMS2VJXc6gnW3ezcDC\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_sandra\_bullock =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}efknfaN8AeojtnMGCfzVR8\textquotesingle{}}\NormalTok{),}
-      \AttributeTok{is\_bill\_murray =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}aDeM2LwCunLFnKR4YaziPa\textquotesingle{}}\NormalTok{),}
-\NormalTok{    ) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{genres\_names,}\SpecialCharTok{{-}}\NormalTok{uuid)}
-\NormalTok{  continuous\_movies}
+\NormalTok{  results}
 \NormalTok{\}}
-\NormalTok{USE\_CACHED }\OtherTok{=} \ConstantTok{TRUE}
-\ControlFlowTok{if}\NormalTok{ (USE\_CACHED) \{}
-\NormalTok{  continuous\_movies }\OtherTok{=} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{\textquotesingle{}continuous\_movies.csv\textquotesingle{}}\NormalTok{)}
-\NormalTok{\} }\ControlFlowTok{else}\NormalTok{ \{}
-\NormalTok{  continuous\_movies }\OtherTok{=} \FunctionTok{create\_continuous\_movies}\NormalTok{()}
-  \FunctionTok{write\_csv}\NormalTok{(continuous\_movies, }\StringTok{\textquotesingle{}continuous\_movies.csv\textquotesingle{}}\NormalTok{)}
-\NormalTok{\}}
+
+\NormalTok{continuous\_movies }\OtherTok{=}\NormalTok{ movies }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# main dplyr code to create the tbl}
+  \FunctionTok{arrange}\NormalTok{(imdb\_rating) }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# since Metacritic ratings have the highest correlation to IMDB ratings}
+  \FunctionTok{select}\NormalTok{(uuid,name,my\_rating, imdb\_rating, tmdb\_rating, tmdb\_count, metacritic\_rating, budget, revenue, runtime, award\_count, imdb\_count, imdb\_arithmetic\_mean, imdb\_median, imdb\_top\_1000\_rating, imdb\_top\_1000\_count, imdb\_us\_rating, imdb\_us\_count, imdb\_not\_us\_rating, imdb\_not\_us\_count,genres\_names,mpaa\_name,imdb\_rating\_percentile,tmdb\_rating\_percentile,metacritic\_rating\_percentile) }\SpecialCharTok{\%\textgreater{}\%} \CommentTok{\# selecting useful continuous columns}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{metacritic\_rating =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(metacritic\_rating), }\FunctionTok{predict}\NormalTok{(imdb\_mlr,}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{imdb\_rating=}\NormalTok{imdb\_rating, }\AttributeTok{award\_count=}\NormalTok{award\_count,}\AttributeTok{imdb\_top\_1000\_rating=}\NormalTok{imdb\_top\_1000\_rating)), metacritic\_rating)) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{mutate}\NormalTok{( }\CommentTok{\# interpolating NA metacritic values}
+    \AttributeTok{is\_action =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Action\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{), }\CommentTok{\# creating dummy variables for different genres}
+    \AttributeTok{is\_comedy =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Comedy\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_adventure =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Adventure\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_animation =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Animation\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_family =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Family\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_drama =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Drama\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_scifi =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Science Fiction\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_thriller =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{\textquotesingle{}Thriller\textquotesingle{}}\NormalTok{,genres\_names),}\DecValTok{1}\NormalTok{,}\DecValTok{0}\NormalTok{),}
+    \AttributeTok{is\_brad\_pitt =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}Laq4vXpGTZpfFFqDcHs5KV\textquotesingle{}}\NormalTok{), }\CommentTok{\# creating dummy variables for crew members to test significance}
+    \AttributeTok{is\_stan\_lee =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}QzvrSM5wqckocFLj3AEZaV\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_christopher\_nolan =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}keZ3UQoTZ4XZKb79VUXDgG\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_spielberg =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}naF68ZLuf7v6upwViuNVUm\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_harrison\_ford =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}GTw4tYdeQmWQ6YdgAa3hGu\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_matt\_damon =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}czP9E4RMt6u9sfTTML9eMR\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_wes\_anderson =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}JVxsaqF8Rxzy3CVxzvQWnd\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_tom\_cruise =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}e4Eiprq53YfhZvwmc8SrLr\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_john\_williams =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}DyCbZvFwBgugBpjDaqx8kk\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_rdj =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}Bpb5BiRdou7xQHjbU7GUDv\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_quentin\_tarantino =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}QLKZWkzmAovVDJXZN8eu3v\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_tom\_hanks =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}7tqrqC9rgLHtXckENws9Fy\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_george\_lucas =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}DRdnxAsNAZAp7HYsspMMtz\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_leonardo\_dicaprio =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}FuCDtnxehhqRrKqh9qC7Dj\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_the\_rock =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}VbfEpXpRyzNfjTppSLU9ei\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_stanley\_kubrick =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}PfnG2E5kKDAM2PrrUdW9jk\textquotesingle{}}\NormalTok{),}
+    \CommentTok{\# is\_john\_hughes = batch\_credit\_filter(uuid,\textquotesingle{}CkytgUXum2syFtLkgy9dyi\textquotesingle{}),}
+    \AttributeTok{is\_jim\_carrey =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}T2K6TBzwq2qavcVFeGL8Rc\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_wally\_pfister =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}L8jtAQbm3ynBna4857d5j2\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_henry\_fonda =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}K5qeaJKmMQen8dMEqY75F4\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_morgan\_freeman =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}FHCFi8DwCzoJbCRC34DMRj\textquotesingle{}}\NormalTok{),}
+    \CommentTok{\# is\_bong\_joon\_ho = batch\_credit\_filter(uuid,\textquotesingle{}VhJUKLUtNBFJsHcSTiAyMy\textquotesingle{}),}
+    \CommentTok{\# is\_dustin\_hoffman = batch\_credit\_filter(uuid,\textquotesingle{}gc7HESshGq5Lh7gD2MH6wR\textquotesingle{}),}
+    \CommentTok{\# is\_arnold\_schwarz = batch\_credit\_filter(uuid,\textquotesingle{}JYP3ANQFwkmsQYPGwj77gk\textquotesingle{}),}
+    \AttributeTok{is\_jack\_nicholson =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}VxqAcnJqT6d7vjcHcpXQoL\textquotesingle{}}\NormalTok{),}
+    \CommentTok{\# is\_aamir\_khan = batch\_credit\_filter(uuid,\textquotesingle{}jWk22meEpdCAhTdpKCfBxg\textquotesingle{}),}
+    \AttributeTok{is\_sean\_connery =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}57UUtEPqsvkpCSmeGPraq8\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_brad\_bird =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}AbANa443DEn6zfpidFA73z\textquotesingle{}}\NormalTok{),}
+    \AttributeTok{is\_natalie\_portman =} \FunctionTok{batch\_credit\_filter}\NormalTok{(uuid,}\StringTok{\textquotesingle{}JSN7GommYrTooGeh5WzvPg\textquotesingle{}}\NormalTok{),}
+    \CommentTok{\# is\_robin\_williams = batch\_credit\_filter(uuid,\textquotesingle{}C56iyMS2VJXc6gnW3ezcDC\textquotesingle{}),}
+    \CommentTok{\# is\_sandra\_bullock = batch\_credit\_filter(uuid,\textquotesingle{}efknfaN8AeojtnMGCfzVR8\textquotesingle{}),}
+    \CommentTok{\# is\_bill\_murray = batch\_credit\_filter(uuid,\textquotesingle{}aDeM2LwCunLFnKR4YaziPa\textquotesingle{}),}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{genres\_names,}\SpecialCharTok{{-}}\NormalTok{uuid)}
 \NormalTok{cor\_matrix }\OtherTok{=}\NormalTok{ continuous\_movies }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{name) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{cor}\NormalTok{()}\CommentTok{\# creating correlation matrix}
 \NormalTok{cor\_matrix[}\DecValTok{1}\NormalTok{,]}
 \end{Highlighting}
@@ -333,22 +323,14 @@ makes sense since it includes more data.
 ##                  0.126677335                  0.075455453 
 ##                  is_the_rock           is_stanley_kubrick 
 ##                 -0.020816763                  0.064227775 
-##               is_john_hughes                is_jim_carrey 
-##                  0.034179508                  0.027645696 
-##             is_wally_pfister               is_henry_fonda 
-##                  0.148044199                  0.087351607 
-##            is_morgan_freeman              is_bong_joon_ho 
-##                  0.080671346                  0.060262949 
-##            is_dustin_hoffman            is_arnold_schwarz 
-##                  0.054668301                  0.030257306 
-##            is_jack_nicholson                is_aamir_khan 
-##                 -0.005494098                  0.067481758 
-##              is_sean_connery                 is_brad_bird 
-##                  0.088991757                  0.060264840 
-##           is_natalie_portman            is_robin_williams 
-##                  0.075279604                  0.057841332 
-##            is_sandra_bullock               is_bill_murray 
-##                  0.007598355                  0.065182711
+##                is_jim_carrey             is_wally_pfister 
+##                  0.027645696                  0.148044199 
+##               is_henry_fonda            is_morgan_freeman 
+##                  0.087351607                  0.080671346 
+##            is_jack_nicholson              is_sean_connery 
+##                 -0.005494098                  0.088991757 
+##                 is_brad_bird           is_natalie_portman 
+##                  0.060264840                  0.075279604
 \end{verbatim}
 
 \begin{Shaded}
@@ -428,7 +410,7 @@ Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-1-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-5-1}
 
 \hypertarget{data-analysis}{%
 \section{Data analysis}\label{data-analysis}}
@@ -550,7 +532,7 @@ Back to top
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-2-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-6-1}
 
 \hypertarget{mlr}{%
 \subsection{MLR}\label{mlr}}
@@ -600,78 +582,70 @@ Back to top
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -41.881  -8.154   1.378   8.372  51.355 
+## -42.538  -7.922   1.255   8.507  50.551 
 ## 
 ## Coefficients:
-##                                Estimate Std. Error t value Pr(>|t|)   
-## (Intercept)                   6.418e+00  2.237e+01   0.287  0.77433   
-## imdb_rating                   1.688e+00  6.637e+00   0.254  0.79931   
-## tmdb_rating                  -6.263e+00  5.267e+00  -1.189  0.23489   
-## tmdb_count                   -9.209e-05  3.765e-04  -0.245  0.80688   
-## metacritic_rating            -1.867e-01  1.295e-01  -1.442  0.15002   
-## budget                       -1.747e-08  1.589e-08  -1.100  0.27205   
-## revenue                      -1.436e-09  2.927e-09  -0.490  0.62401   
-## runtime                      -3.679e-02  4.214e-02  -0.873  0.38311   
-## award_count                  -4.153e-01  3.042e-01  -1.365  0.17270   
-## imdb_count                    3.693e-05  1.623e-05   2.276  0.02323 * 
-## imdb_arithmetic_mean         -2.288e+00  3.410e+00  -0.671  0.50251   
-## imdb_median                  -1.787e-01  8.727e-01  -0.205  0.83786   
-## imdb_top_1000_rating          1.790e+00  1.875e+00   0.955  0.34008   
-## imdb_top_1000_count           1.889e-02  6.372e-03   2.965  0.00316 **
-## imdb_us_rating                6.948e+00  4.351e+00   1.597  0.11095   
-## imdb_us_count                -1.267e-04  5.932e-05  -2.136  0.03315 * 
-## imdb_not_us_rating            4.190e+00  4.777e+00   0.877  0.38082   
-## imdb_not_us_count            -4.886e-05  3.790e-05  -1.289  0.19786   
-## mpaa_name                     2.612e-01  6.276e-01   0.416  0.67745   
-## imdb_rating_percentile       -1.564e-01  1.141e-01  -1.371  0.17095   
-## tmdb_rating_percentile        2.987e-01  1.475e-01   2.025  0.04334 * 
-## metacritic_rating_percentile  1.090e-01  6.191e-02   1.760  0.07899 . 
-## is_action                     2.840e+00  1.642e+00   1.730  0.08420 . 
-## is_comedy                     1.091e+00  1.580e+00   0.690  0.49025   
-## is_adventure                 -2.751e+00  1.534e+00  -1.793  0.07351 . 
-## is_animation                  1.431e+00  2.656e+00   0.539  0.59023   
-## is_family                     3.269e+00  2.376e+00   1.376  0.16945   
-## is_drama                      4.133e-01  1.761e+00   0.235  0.81450   
-## is_scifi                      1.322e+00  1.673e+00   0.790  0.42970   
-## is_thriller                   8.779e-01  1.785e+00   0.492  0.62305   
-## is_brad_pitt                  4.318e+00  4.034e+00   1.070  0.28491   
-## is_stan_lee                   3.593e+00  3.048e+00   1.179  0.23899   
-## is_christopher_nolan          5.361e+00  6.398e+00   0.838  0.40253   
-## is_spielberg                 -1.090e+00  3.446e+00  -0.316  0.75200   
-## is_harrison_ford              3.944e+00  5.412e+00   0.729  0.46650   
-## is_matt_damon                 5.681e+00  4.157e+00   1.367  0.17235   
-## is_wes_anderson               7.329e+00  6.880e+00   1.065  0.28724   
-## is_tom_cruise                 1.933e+00  4.323e+00   0.447  0.65499   
-## is_john_williams              1.013e+01  4.516e+00   2.243  0.02531 * 
-## is_rdj                       -5.650e-01  4.649e+00  -0.122  0.90333   
-## is_quentin_tarantino         -5.106e+00  5.865e+00  -0.870  0.38443   
-## is_tom_hanks                  2.609e+00  4.119e+00   0.633  0.52670   
-## is_george_lucas               1.781e+00  5.621e+00   0.317  0.75146   
-## is_leonardo_dicaprio          1.055e+00  5.595e+00   0.188  0.85057   
-## is_the_rock                   3.416e+00  3.962e+00   0.862  0.38900   
-## is_stanley_kubrick            1.951e+00  6.408e+00   0.304  0.76095   
-## is_john_hughes                2.951e+00  5.159e+00   0.572  0.56758   
-## is_jim_carrey                 7.809e+00  5.203e+00   1.501  0.13396   
-## is_wally_pfister              5.665e+00  6.792e+00   0.834  0.40461   
-## is_henry_fonda                1.756e+01  1.366e+01   1.286  0.19899   
-## is_morgan_freeman            -2.065e+00  4.808e+00  -0.430  0.66770   
-## is_bong_joon_ho               5.757e+00  8.088e+00   0.712  0.47690   
-## is_dustin_hoffman             9.500e+00  5.612e+00   1.693  0.09108 . 
-## is_arnold_schwarz            -5.685e+00  8.090e+00  -0.703  0.48252   
-## is_jack_nicholson            -1.476e+01  8.111e+00  -1.820  0.06928 . 
-## is_aamir_khan                 2.371e+01  1.403e+01   1.691  0.09151 . 
-## is_sean_connery               1.366e+01  8.103e+00   1.685  0.09250 . 
-## is_brad_bird                  7.857e+00  6.328e+00   1.242  0.21494   
-## is_natalie_portman            2.629e+00  5.006e+00   0.525  0.59976   
-## is_robin_williams             1.037e+01  5.239e+00   1.980  0.04826 * 
-## is_sandra_bullock             3.728e+00  5.572e+00   0.669  0.50377   
-## is_bill_murray                5.583e+00  4.935e+00   1.131  0.25844   
+##                                Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)                   8.339e+00  2.226e+01   0.375 0.708126    
+## imdb_rating                   5.033e+00  6.358e+00   0.792 0.428895    
+## tmdb_rating                  -6.790e+00  5.262e+00  -1.291 0.197432    
+## tmdb_count                   -1.985e-04  3.723e-04  -0.533 0.594174    
+## metacritic_rating            -1.895e-01  1.293e-01  -1.465 0.143494    
+## budget                       -2.020e-08  1.586e-08  -1.274 0.203363    
+## revenue                      -9.636e-10  2.905e-09  -0.332 0.740267    
+## runtime                      -3.417e-02  4.181e-02  -0.817 0.414197    
+## award_count                  -3.764e-01  3.017e-01  -1.248 0.212710    
+## imdb_count                    3.951e-05  1.618e-05   2.442 0.014938 *  
+## imdb_arithmetic_mean         -2.466e+00  3.396e+00  -0.726 0.468122    
+## imdb_median                  -1.721e-01  8.734e-01  -0.197 0.843877    
+## imdb_top_1000_rating          1.285e+00  1.851e+00   0.694 0.487824    
+## imdb_top_1000_count           2.263e-02  6.250e-03   3.621 0.000321 ***
+## imdb_us_rating                5.708e+00  4.327e+00   1.319 0.187725    
+## imdb_us_count                -1.382e-04  5.890e-05  -2.347 0.019293 *  
+## imdb_not_us_rating            2.717e+00  4.611e+00   0.589 0.555941    
+## imdb_not_us_count            -5.191e-05  3.769e-05  -1.377 0.168991    
+## mpaa_name                     2.479e-01  6.245e-01   0.397 0.691504    
+## imdb_rating_percentile       -1.562e-01  1.139e-01  -1.371 0.171037    
+## tmdb_rating_percentile        3.140e-01  1.476e-01   2.128 0.033799 *  
+## metacritic_rating_percentile  1.070e-01  6.203e-02   1.724 0.085227 .  
+## is_action                     2.831e+00  1.632e+00   1.735 0.083348 .  
+## is_comedy                     1.453e+00  1.570e+00   0.926 0.354866    
+## is_adventure                 -2.823e+00  1.535e+00  -1.839 0.066401 .  
+## is_animation                  1.552e+00  2.629e+00   0.590 0.555294    
+## is_family                     3.497e+00  2.346e+00   1.490 0.136726    
+## is_drama                      7.640e-01  1.750e+00   0.437 0.662625    
+## is_scifi                      1.438e+00  1.650e+00   0.872 0.383745    
+## is_thriller                   3.957e-01  1.785e+00   0.222 0.824634    
+## is_brad_pitt                  4.341e+00  4.005e+00   1.084 0.278928    
+## is_stan_lee                   3.581e+00  3.041e+00   1.178 0.239381    
+## is_christopher_nolan          5.339e+00  6.415e+00   0.832 0.405602    
+## is_spielberg                 -1.693e+00  3.416e+00  -0.496 0.620293    
+## is_harrison_ford              3.934e+00  5.425e+00   0.725 0.468638    
+## is_matt_damon                 5.941e+00  4.136e+00   1.436 0.151452    
+## is_wes_anderson               1.083e+01  5.647e+00   1.917 0.055730 .  
+## is_tom_cruise                 2.335e+00  4.310e+00   0.542 0.588211    
+## is_john_williams              1.025e+01  4.416e+00   2.321 0.020646 *  
+## is_rdj                       -4.223e-01  4.668e+00  -0.090 0.927939    
+## is_quentin_tarantino         -4.917e+00  5.879e+00  -0.836 0.403323    
+## is_tom_hanks                  1.939e+00  4.125e+00   0.470 0.638442    
+## is_george_lucas               1.571e+00  5.601e+00   0.281 0.779180    
+## is_leonardo_dicaprio          2.724e-01  5.604e+00   0.049 0.961251    
+## is_the_rock                   3.631e+00  3.966e+00   0.915 0.360365    
+## is_stanley_kubrick            1.361e+00  6.420e+00   0.212 0.832239    
+## is_jim_carrey                 7.740e+00  5.184e+00   1.493 0.136067    
+## is_wally_pfister              5.774e+00  6.818e+00   0.847 0.397443    
+## is_henry_fonda                1.641e+01  1.370e+01   1.198 0.231578    
+## is_morgan_freeman            -2.214e+00  4.826e+00  -0.459 0.646689    
+## is_jack_nicholson            -1.498e+01  8.136e+00  -1.842 0.066068 .  
+## is_sean_connery               1.369e+01  8.135e+00   1.683 0.092948 .  
+## is_brad_bird                  7.873e+00  6.343e+00   1.241 0.215080    
+## is_natalie_portman            2.281e+00  5.016e+00   0.455 0.649509    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## Residual standard error: 13.25 on 524 degrees of freedom
-## Multiple R-squared:  0.5526, Adjusted R-squared:  0.5005 
-## F-statistic: 10.61 on 61 and 524 DF,  p-value: < 2.2e-16
+## Residual standard error: 13.3 on 532 degrees of freedom
+## Multiple R-squared:  0.542,  Adjusted R-squared:  0.4964 
+## F-statistic: 11.88 on 53 and 532 DF,  p-value: < 2.2e-16
 \end{verbatim}
 
 \begin{Shaded}
@@ -718,7 +692,7 @@ Back to top
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-3-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-7-1}
 
 \hypertarget{transformed-and-polynomial-mlrs}{%
 \subsection{Transformed and Polynomial
@@ -738,78 +712,70 @@ MLRs}\label{transformed-and-polynomial-mlrs}}
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -3.8407 -0.5095  0.1454  0.6056  3.9915 
+## -3.8742 -0.4941  0.1247  0.6301  3.9422 
 ## 
 ## Coefficients:
-##                                Estimate Std. Error t value Pr(>|t|)   
-## (Intercept)                   3.353e+00  1.695e+00   1.978  0.04841 * 
-## imdb_rating                   5.560e-01  5.028e-01   1.106  0.26928   
-## tmdb_rating                  -7.435e-01  3.990e-01  -1.864  0.06294 . 
-## tmdb_count                   -1.024e-05  2.853e-05  -0.359  0.71973   
-## metacritic_rating            -1.458e-02  9.813e-03  -1.486  0.13792   
-## budget                       -1.186e-09  1.204e-09  -0.986  0.32482   
-## revenue                      -4.278e-11  2.218e-10  -0.193  0.84709   
-## runtime                      -2.128e-03  3.192e-03  -0.667  0.50535   
-## award_count                  -3.046e-02  2.304e-02  -1.322  0.18675   
-## imdb_count                    2.406e-06  1.229e-06   1.958  0.05078 . 
-## imdb_arithmetic_mean         -2.659e-01  2.583e-01  -1.029  0.30379   
-## imdb_median                  -4.245e-03  6.611e-02  -0.064  0.94883   
-## imdb_top_1000_rating          1.327e-01  1.420e-01   0.935  0.35045   
-## imdb_top_1000_count           1.531e-03  4.827e-04   3.171  0.00161 **
-## imdb_us_rating                5.424e-01  3.296e-01   1.645  0.10047   
-## imdb_us_count                -9.192e-06  4.493e-06  -2.046  0.04128 * 
-## imdb_not_us_rating            2.895e-01  3.619e-01   0.800  0.42405   
-## imdb_not_us_count            -3.273e-06  2.871e-06  -1.140  0.25473   
-## mpaa_name                     1.894e-02  4.754e-02   0.398  0.69046   
-## imdb_rating_percentile       -2.235e-02  8.641e-03  -2.587  0.00995 **
-## tmdb_rating_percentile        2.926e-02  1.117e-02   2.618  0.00909 **
-## metacritic_rating_percentile  7.776e-03  4.690e-03   1.658  0.09792 . 
-## is_action                     2.064e-01  1.244e-01   1.659  0.09765 . 
-## is_comedy                     5.186e-02  1.197e-01   0.433  0.66505   
-## is_adventure                 -2.185e-01  1.162e-01  -1.880  0.06067 . 
-## is_animation                  1.211e-01  2.012e-01   0.602  0.54760   
-## is_family                     2.445e-01  1.800e-01   1.358  0.17493   
-## is_drama                      1.508e-02  1.334e-01   0.113  0.91000   
-## is_scifi                      9.787e-02  1.267e-01   0.772  0.44025   
-## is_thriller                   7.312e-02  1.352e-01   0.541  0.58890   
-## is_brad_pitt                  3.188e-01  3.056e-01   1.043  0.29732   
-## is_stan_lee                   2.609e-01  2.309e-01   1.130  0.25900   
-## is_christopher_nolan          4.147e-01  4.847e-01   0.856  0.39259   
-## is_spielberg                 -8.074e-02  2.610e-01  -0.309  0.75723   
-## is_harrison_ford              2.389e-01  4.100e-01   0.583  0.56025   
-## is_matt_damon                 3.650e-01  3.149e-01   1.159  0.24705   
-## is_wes_anderson               5.662e-01  5.212e-01   1.086  0.27779   
-## is_tom_cruise                 1.565e-01  3.275e-01   0.478  0.63299   
-## is_john_williams              6.487e-01  3.421e-01   1.896  0.05845 . 
-## is_rdj                       -1.184e-02  3.522e-01  -0.034  0.97321   
-## is_quentin_tarantino         -3.294e-01  4.443e-01  -0.741  0.45875   
-## is_tom_hanks                  1.787e-01  3.120e-01   0.573  0.56716   
-## is_george_lucas               1.235e-01  4.258e-01   0.290  0.77186   
-## is_leonardo_dicaprio          1.099e-01  4.239e-01   0.259  0.79548   
-## is_the_rock                   2.350e-01  3.002e-01   0.783  0.43400   
-## is_stanley_kubrick            1.301e-01  4.854e-01   0.268  0.78877   
-## is_john_hughes                2.323e-01  3.908e-01   0.594  0.55251   
-## is_jim_carrey                 5.674e-01  3.941e-01   1.440  0.15058   
-## is_wally_pfister              3.609e-01  5.145e-01   0.701  0.48333   
-## is_henry_fonda                7.873e-01  1.034e+00   0.761  0.44697   
-## is_morgan_freeman            -2.518e-01  3.642e-01  -0.691  0.48968   
-## is_bong_joon_ho               3.681e-01  6.127e-01   0.601  0.54825   
-## is_dustin_hoffman             6.196e-01  4.251e-01   1.457  0.14561   
-## is_arnold_schwarz            -4.388e-01  6.128e-01  -0.716  0.47431   
-## is_jack_nicholson            -9.427e-01  6.144e-01  -1.534  0.12556   
-## is_aamir_khan                 1.469e+00  1.063e+00   1.382  0.16749   
-## is_sean_connery               8.199e-01  6.138e-01   1.336  0.18221   
-## is_brad_bird                  5.077e-01  4.794e-01   1.059  0.29003   
-## is_natalie_portman            1.896e-01  3.792e-01   0.500  0.61731   
-## is_robin_williams             7.056e-01  3.968e-01   1.778  0.07599 . 
-## is_sandra_bullock             2.445e-01  4.221e-01   0.579  0.56269   
-## is_bill_murray                2.808e-01  3.739e-01   0.751  0.45292   
+##                                Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)                   3.443e+00  1.681e+00   2.048 0.041079 *  
+## imdb_rating                   7.414e-01  4.802e-01   1.544 0.123185    
+## tmdb_rating                  -7.710e-01  3.974e-01  -1.940 0.052906 .  
+## tmdb_count                   -1.655e-05  2.812e-05  -0.589 0.556278    
+## metacritic_rating            -1.475e-02  9.769e-03  -1.510 0.131627    
+## budget                       -1.363e-09  1.198e-09  -1.138 0.255586    
+## revenue                      -1.099e-11  2.194e-10  -0.050 0.960088    
+## runtime                      -1.994e-03  3.158e-03  -0.631 0.528018    
+## award_count                  -2.776e-02  2.279e-02  -1.218 0.223629    
+## imdb_count                    2.572e-06  1.222e-06   2.105 0.035784 *  
+## imdb_arithmetic_mean         -2.734e-01  2.565e-01  -1.066 0.286891    
+## imdb_median                  -4.496e-03  6.597e-02  -0.068 0.945684    
+## imdb_top_1000_rating          1.020e-01  1.398e-01   0.730 0.465922    
+## imdb_top_1000_count           1.771e-03  4.721e-04   3.751 0.000196 ***
+## imdb_us_rating                4.679e-01  3.268e-01   1.432 0.152787    
+## imdb_us_count                -9.905e-06  4.449e-06  -2.226 0.026406 *  
+## imdb_not_us_rating            2.144e-01  3.482e-01   0.616 0.538317    
+## imdb_not_us_count            -3.503e-06  2.846e-06  -1.231 0.218913    
+## mpaa_name                     1.814e-02  4.716e-02   0.385 0.700701    
+## imdb_rating_percentile       -2.242e-02  8.606e-03  -2.605 0.009433 ** 
+## tmdb_rating_percentile        3.017e-02  1.115e-02   2.706 0.007019 ** 
+## metacritic_rating_percentile  7.622e-03  4.685e-03   1.627 0.104340    
+## is_action                     2.054e-01  1.232e-01   1.667 0.096163 .  
+## is_comedy                     7.410e-02  1.185e-01   0.625 0.532222    
+## is_adventure                 -2.241e-01  1.159e-01  -1.934 0.053688 .  
+## is_animation                  1.233e-01  1.986e-01   0.621 0.534973    
+## is_family                     2.665e-01  1.772e-01   1.504 0.133201    
+## is_drama                      3.973e-02  1.322e-01   0.301 0.763861    
+## is_scifi                      1.038e-01  1.246e-01   0.833 0.405216    
+## is_thriller                   4.076e-02  1.348e-01   0.302 0.762504    
+## is_brad_pitt                  3.207e-01  3.025e-01   1.060 0.289603    
+## is_stan_lee                   2.611e-01  2.297e-01   1.137 0.256045    
+## is_christopher_nolan          4.165e-01  4.845e-01   0.860 0.390377    
+## is_spielberg                 -1.223e-01  2.580e-01  -0.474 0.635507    
+## is_harrison_ford              2.371e-01  4.097e-01   0.579 0.562959    
+## is_matt_damon                 3.857e-01  3.124e-01   1.235 0.217457    
+## is_wes_anderson               7.262e-01  4.265e-01   1.703 0.089202 .  
+## is_tom_cruise                 1.861e-01  3.256e-01   0.572 0.567872    
+## is_john_williams              6.652e-01  3.336e-01   1.994 0.046619 *  
+## is_rdj                       -3.467e-03  3.525e-01  -0.010 0.992156    
+## is_quentin_tarantino         -3.138e-01  4.440e-01  -0.707 0.480080    
+## is_tom_hanks                  1.338e-01  3.115e-01   0.429 0.667796    
+## is_george_lucas               1.065e-01  4.230e-01   0.252 0.801392    
+## is_leonardo_dicaprio          5.955e-02  4.233e-01   0.141 0.888171    
+## is_the_rock                   2.445e-01  2.995e-01   0.816 0.414656    
+## is_stanley_kubrick            9.460e-02  4.849e-01   0.195 0.845378    
+## is_jim_carrey                 5.508e-01  3.916e-01   1.407 0.160143    
+## is_wally_pfister              3.706e-01  5.149e-01   0.720 0.472072    
+## is_henry_fonda                7.140e-01  1.035e+00   0.690 0.490624    
+## is_morgan_freeman            -2.606e-01  3.645e-01  -0.715 0.475033    
+## is_jack_nicholson            -9.565e-01  6.145e-01  -1.557 0.120156    
+## is_sean_connery               8.239e-01  6.144e-01   1.341 0.180508    
+## is_brad_bird                  5.086e-01  4.791e-01   1.062 0.288919    
+## is_natalie_portman            1.679e-01  3.788e-01   0.443 0.657707    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## Residual standard error: 1.003 on 524 degrees of freedom
-## Multiple R-squared:  0.5311, Adjusted R-squared:  0.4766 
-## F-statistic: 9.731 on 61 and 524 DF,  p-value: < 2.2e-16
+## Residual standard error: 1.005 on 532 degrees of freedom
+## Multiple R-squared:  0.5229, Adjusted R-squared:  0.4753 
+## F-statistic:    11 on 53 and 532 DF,  p-value: < 2.2e-16
 \end{verbatim}
 
 \begin{Shaded}
@@ -917,7 +883,7 @@ MLRs}\label{transformed-and-polynomial-mlrs}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-4-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-8-1}
 
 \hypertarget{ridge-and-lasso}{%
 \subsection{Ridge and Lasso}\label{ridge-and-lasso}}
@@ -943,7 +909,7 @@ Create data matrix to be used for both ridge and lasso.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-7-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-11-1}
 
 \hypertarget{lasso}{%
 \subsubsection{Lasso}\label{lasso}}
@@ -956,7 +922,7 @@ Create data matrix to be used for both ridge and lasso.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-8-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-12-1}
 
 \hypertarget{comparison}{%
 \subsubsection{Comparison}\label{comparison}}
@@ -991,7 +957,7 @@ Create data matrix to be used for both ridge and lasso.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-9-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-13-1}
 
 \begin{itemize}
 \tightlist
@@ -1048,15 +1014,13 @@ much of a detriment.
 ##     is_spielberg + is_harrison_ford + is_matt_damon + is_wes_anderson + 
 ##     is_tom_cruise + is_john_williams + is_rdj + is_quentin_tarantino + 
 ##     is_tom_hanks + is_george_lucas + is_leonardo_dicaprio + is_the_rock + 
-##     is_stanley_kubrick + is_john_hughes + is_jim_carrey + is_wally_pfister + 
-##     is_henry_fonda + is_morgan_freeman + is_bong_joon_ho + is_dustin_hoffman + 
-##     is_arnold_schwarz + is_jack_nicholson + is_aamir_khan + is_sean_connery + 
-##     is_brad_bird + is_natalie_portman + is_robin_williams + is_sandra_bullock + 
-##     is_bill_murray) - name + log(imdb_count) + log(tmdb_count) + 
-##     log(imdb_us_count) + log(imdb_not_us_count)
-##   Res.Df    RSS Df Sum of Sq     F    Pr(>F)    
-## 1    585 205512                                 
-## 2    520  90585 65    114927 10.15 < 2.2e-16 ***
+##     is_stanley_kubrick + is_jim_carrey + is_wally_pfister + is_henry_fonda + 
+##     is_morgan_freeman + is_jack_nicholson + is_sean_connery + 
+##     is_brad_bird + is_natalie_portman) - name + log(imdb_count) + 
+##     log(tmdb_count) + log(imdb_us_count) + log(imdb_not_us_count)
+##   Res.Df    RSS Df Sum of Sq      F    Pr(>F)    
+## 1    585 205512                                  
+## 2    528  92342 57    113170 11.352 < 2.2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 \end{verbatim}
@@ -1084,45 +1048,36 @@ parameters because any parameter improves the fit.
 ## 
 ## Call:
 ## lm(formula = my_rating ~ imdb_rating + log(imdb_count) + is_john_williams + 
-##     tmdb_rating_percentile + is_robin_williams + is_bill_murray + 
-##     is_sean_connery + is_jack_nicholson + is_christopher_nolan + 
-##     is_stan_lee + is_comedy + is_matt_damon + imdb_us_rating + 
-##     is_dustin_hoffman + is_action + is_adventure + is_family + 
-##     is_henry_fonda + is_aamir_khan + imdb_not_us_rating, data = continuous_movies)
+##     tmdb_rating_percentile + is_jack_nicholson + is_sean_connery + 
+##     is_wes_anderson + is_matt_damon + is_wally_pfister + imdb_top_1000_count + 
+##     is_comedy + is_action + is_jim_carrey, data = continuous_movies)
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -43.208  -8.048   0.963   8.901  51.492 
+## -47.321  -8.287   1.374   9.144  48.829 
 ## 
 ## Coefficients:
-##                         Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)            -36.54690    8.02058  -4.557 6.37e-06 ***
-## imdb_rating             -5.03237    5.51677  -0.912 0.362055    
-## log(imdb_count)          2.18695    0.45396   4.817 1.87e-06 ***
-## is_john_williams        11.04011    2.89969   3.807 0.000156 ***
-## tmdb_rating_percentile   0.11880    0.04087   2.907 0.003793 ** 
-## is_robin_williams       10.74979    5.07432   2.118 0.034571 *  
-## is_bill_murray          10.04111    3.87296   2.593 0.009771 ** 
-## is_sean_connery         16.23032    7.74485   2.096 0.036560 *  
-## is_jack_nicholson      -14.80868    7.67276  -1.930 0.054103 .  
-## is_christopher_nolan     9.18126    4.34181   2.115 0.034900 *  
-## is_stan_lee              4.44786    2.38016   1.869 0.062179 .  
-## is_comedy                2.03353    1.33940   1.518 0.129514    
-## is_matt_damon            7.14619    3.89592   1.834 0.067139 .  
-## imdb_us_rating           7.19509    3.22451   2.231 0.026048 *  
-## is_dustin_hoffman        7.94873    5.42923   1.464 0.143733    
-## is_action                3.48623    1.43060   2.437 0.015122 *  
-## is_adventure            -3.04652    1.35713  -2.245 0.025166 *  
-## is_family                3.13360    1.53023   2.048 0.041041 *  
-## is_henry_fonda          19.83960   13.23803   1.499 0.134515    
-## is_aamir_khan           20.41390   13.39043   1.525 0.127940    
-## imdb_not_us_rating       5.85220    3.93296   1.488 0.137312    
+##                          Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)            -24.943393  11.605564  -2.149  0.03203 *  
+## imdb_rating              7.658182   1.339668   5.716 1.75e-08 ***
+## log(imdb_count)          0.904671   0.901130   1.004  0.31584    
+## is_john_williams         8.308687   2.896440   2.869  0.00428 ** 
+## tmdb_rating_percentile   0.136317   0.042377   3.217  0.00137 ** 
+## is_jack_nicholson      -15.645711   7.764177  -2.015  0.04436 *  
+## is_sean_connery         14.536230   7.802679   1.863  0.06298 .  
+## is_wes_anderson         11.238305   5.528439   2.033  0.04253 *  
+## is_matt_damon            8.052574   3.910719   2.059  0.03994 *  
+## is_wally_pfister         8.514317   4.819461   1.767  0.07782 .  
+## imdb_top_1000_count      0.010227   0.006078   1.683  0.09300 .  
+## is_comedy                2.747718   1.262529   2.176  0.02994 *  
+## is_action                2.629037   1.278435   2.056  0.04019 *  
+## is_jim_carrey            7.871024   5.101206   1.543  0.12339    
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## Residual standard error: 13.15 on 565 degrees of freedom
-## Multiple R-squared:  0.5249, Adjusted R-squared:  0.5081 
-## F-statistic: 31.21 on 20 and 565 DF,  p-value: < 2.2e-16
+## Residual standard error: 13.28 on 572 degrees of freedom
+## Multiple R-squared:  0.5088, Adjusted R-squared:  0.4976 
+## F-statistic: 45.58 on 13 and 572 DF,  p-value: < 2.2e-16
 \end{verbatim}
 
 \begin{Shaded}
@@ -1176,10 +1131,10 @@ parameters because any parameter improves the fit.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-13-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-17-1}
 
 AIC and BIC had very different results. The AIC resulted in my highest
-adjusted R\^{}2 of any model (0.5080743). The final AIC selected 21
+adjusted R\^{}2 of any model (0.4976352). The final AIC selected 14
 coefficients. This is very different than the BIC which selected 4. Only
 3 variables in the AIC have negative betas, is\_jack\_nicholoson,
 is\_adventure, and imdb\_rating. This is unique to this model and is
@@ -1411,7 +1366,7 @@ Revenue}\label{gam-with-genre-interactions-to-imdb-rating-and-revenue}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-19-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-23-1}
 
 The fit plots have been withheld for spacing reasons. For the first gam:
 IMDB rating and metacritic rating are linear. TMDB rating is linear
@@ -1518,7 +1473,7 @@ not particularly close.
   \end{itemize}
 \end{itemize}
 
-\includegraphics[width=1\linewidth]{finalProject_files/figure-latex/unnamed-chunk-24-1}
+\includegraphics[width=1\linewidth]{C:\Users\aweso\OneDrive\Documents\Stat 410\Project\index_files/figure-latex/unnamed-chunk-28-1}
 
 \hypertarget{predictions}{%
 \subsection{Predictions}\label{predictions}}
