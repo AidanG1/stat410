@@ -159,7 +159,7 @@ if (USE_CACHED) {
 cor_matrix = continuous_movies %>% select(-name) %>% cor()# creating correlation matrix
 cor_matrix[1,]
 ```
-This R code creates the main dataset that I am analyzing. The first thing I did was deciding to interpolate null values rather than removing than. The only category will null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
+This R code creates the main dataset that I am analyzing. The first thing I did was deciding to interpolate null values rather than removing than. The only category with null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
 
 The next step was to make mpaa_name a numeric factor allowing it to be used as a dummy variable. The most common MPAA ratings for movies that I have seen are PG-13(209), PG(179), R(135), G(27), and NR(21).
 
@@ -242,42 +242,57 @@ abline(0,1)
 The full MLR is an improvement but all ratings and all counts models are not particularly effective. Looking at the ratings MLR, the only significant term is the IMDB rating and the adjusted r squared only increases `r summary(fit_mlr_rating)$adj.r.squared-summary(fit_slr_imdb)$adj.r.squared` between the 2 models. Although many of the counts are significant, the overall model r squared is quite low at `r summary(fit_mlr_count)$adj.r.squared`. This occurs because of the uncapped counts that I mentioned in data analysis.
 
 ## Transformed and Polynomial MLRs
-```{r transform_poly}
-fit7 = lm(sqrt(my_rating)~.-name,data=continuous_movies) # MLR with full model to sqrt of my rating
-summary(fit7)
-fit8 = lm(my_rating~log(imdb_count)+imdb_rating,data=continuous_movies) # simple model with my_rating to imdb_rating and log(imdb_count)
-summary(fit8)
-fit9 = lm(sqrt(my_rating)~sqrt(imdb_count)+sqrt(imdb_rating), data=continuous_movies) # fitting with sqrts
-summary(fit9)
+```{r transform}
+fit_full = lm(my_rating~.-name+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies) # start by creating a full and add some log terms for values not bounded to a specific range
+summary(fit_full)
+fit_log_count = lm(my_rating~log(imdb_count)+imdb_rating,data=continuous_movies) # simple model with my_rating to imdb_rating and log(imdb_count)
+summary(fit_log_count)
 
-plot(continuous_movies$my_rating, fit7$fitted.values^2,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
-points(continuous_movies$my_rating,fit8$fitted.values,col="aquamarine3")
-points(continuous_movies$my_rating,fit9$fitted.values,col="firebrick4")
+plot(continuous_movies$my_rating, fit_full$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Transformations My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit_log_count$fitted.values,col="aquamarine3")
 legend(x = "topleft", title="Models", bg="transparent",
-       legend=c("SQRT~All", "IMDB+log(imdb_count)",'SQRT~SQRT'),
-       fill = c("orchid","aquamarine3",'firebrick4'))
+       legend=c("Full", "IMDB+log(imdb_count)"),
+       fill = c("orchid","aquamarine3"))
 abline(0,1)
 ```
 
+The full fit is able to get a high r squared of `r summary(fit_full)$adj.r.squared` because it includes many different variables and can be granular about matching them. However, many of the coefficients it chooses do not make sense for interpretation such as negative betas for imdb_rating and various counts. Moreover, the simpler model with just log(imdb_count) and imdb_rating is much more interpretable as both models have positive betas as expected.
+
 ## Polynomial and Interaction
 ```{r polynomial_interaction}
-fit10 = lm(my_rating~poly(imdb_rating, degree=5),data=continuous_movies) # fitting a cubic model with imdb_rating
-summary(fit10)
-fit11 = lm(my_rating ~ polym(imdb_rating, imdb_count, award_count, degree=5, raw=TRUE),data=continuous_movies) # fitting with a very big polynomial
-s_fit11 = summary(fit11)
-s_fit11$adj.r.squared
-fit12 = lm(my_rating~imdb_rating*is_animation+imdb_rating*is_family + imdb_rating*is_adventure + imdb_rating*is_action+imdb_rating*is_drama+imdb_rating*is_comedy+imdb_rating*is_thriller+imdb_rating*is_scifi+imdb_rating*mpaa_name+revenue*is_animation+revenue*is_action+revenue*is_drama+revenue*is_comedy+revenue*is_thriller+revenue*is_scifi+log(imdb_count),data=continuous_movies)
-summary(fit12)
+fit_poly_imdb = lm(my_rating~poly(imdb_rating, degree=5),data=continuous_movies) # fitting a cubic model with imdb_rating
+summary(fit_poly_imdb)
+fit_polym = lm(my_rating ~ polym(imdb_rating, imdb_count, award_count, degree=5, raw=TRUE),data=continuous_movies) # fitting with a very big polynomial
+s_polym = summary(fit_polym)
+s_polym$adj.r.squared
+fit_interaction = lm(my_rating~imdb_rating*is_animation+imdb_rating*is_family + imdb_rating*is_adventure + imdb_rating*is_action+imdb_rating*is_drama+imdb_rating*is_comedy+imdb_rating*is_thriller+imdb_rating*is_scifi+imdb_rating*mpaa_name+revenue*is_animation+revenue*is_action+revenue*is_drama+revenue*is_comedy+revenue*is_thriller+revenue*is_scifi+log(imdb_count),data=continuous_movies)
+summary(fit_interaction)
 
 
-plot(continuous_movies$my_rating, fit10$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
-points(continuous_movies$my_rating,fit11$fitted.values,col="aquamarine3")
-points(continuous_movies$my_rating,fit12$fitted.values,col="firebrick4")
+plot(continuous_movies$my_rating, fit_poly_imdb$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit_polym$fitted.values,col="aquamarine3")
+points(continuous_movies$my_rating,fit_interaction$fitted.values,col="firebrick4")
 legend(x = "topleft", title="Models", bg="transparent",
        legend=c("IMDB^5", "Polym",'Interaction'),
        fill = c("orchid","aquamarine3",'firebrick4'))
 abline(0,1)
 ```
+
+The fifth degree polynomial based on IMDB rating is not very effective. In fact, it is not more significant than a simple linear model with IMDB rating.
+
+```{r anova_poly_imdb}
+anova(fit_poly_imdb, fit_slr_imdb)
+```
+The multiple polynomial has a very solid r squared: `r s_polym$adj.r.squared`. However, this comes at the price of interpretability. Trying to consider what a 1 unit difference award_count does when there are terms like the following is extremely difficult.
+$$
+imdbrating^2+imdbcount+awardcount^2
+$$
+Finally, the interaction terms are not particularly useful as none of them are significant. In fact, the only 2 things the model finds significant are imdb_rating, and log(imdb_count) which are present in fit_log_count.
+
+```{r anova_log_count}
+anova(fit_log_count, fit_interaction)
+```
+This results in the two models not being significantly based on anova.
 
 ## Ridge and Lasso {.tabset}
 ```{r load_glmnet, include=FALSE}
@@ -288,6 +303,7 @@ Create data matrix to be used for both ridge and lasso.
 ```{r glmnet_matrix}
 X = model.matrix(~ -1 + sqrt(imdb_count) + imdb_rating + sqrt(award_count), data = continuous_movies) # model to use for ridge and lasso fits
 y = continuous_movies$my_rating
+
 fit_lm = lm(my_rating ~ sqrt(imdb_count)+ imdb_rating + sqrt(award_count), data = continuous_movies) # non-ridge and lasso to compare to
 ```
 ### Ridge
@@ -311,7 +327,7 @@ beta_hat_ridge = coef(fit.cv.ridge, s = "lambda.1se")
 beta_hat_lasso = coef(fit.cv.lasso, s = "lambda.1se")
 cbind(beta_hat_mlr, beta_hat_ridge, beta_hat_lasso)
 
-plot(continuous_movies$my_rating,predict(glmnet(X,y,alpha=0),as.matrix(X),s=fit.cv.ridge$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+plot(continuous_movies$my_rating,predict(glmnet(X,y,alpha=0),as.matrix(X),s=fit.cv.ridge$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="GLMNET My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,predict(glmnet(X,y,alpha=1),as.matrix(X),s=fit.cv.lasso$lambda.1se),col="aquamarine3")
 points(continuous_movies$my_rating,fit_lm$fitted.values,col="firebrick4")
 legend(x = "topleft", title="Models", 
@@ -320,19 +336,44 @@ legend(x = "topleft", title="Models",
 abline(0,1)
 ```
 
+### Lasso Full
+```{r lasso_full}
+X2 = model.matrix(~.-name-my_rating+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies)
+fit_lasso_full = glmnet(X2,y,alpha=1) # lasso fit
+fit.cv.lasso_full = cv.glmnet(X2,y,alpha=1)
+plot(fit.cv.lasso_full)
+```
+
+### Comparison Full
+```{r compare_glmnet_full}
+beta_hat_mlr_full = coef(fit_full)
+beta_hat_lasso_full = coef(fit.cv.lasso_full, s = "lambda.1se")
+cbind(beta_hat_mlr_full, beta_hat_lasso_full)
+
+plot(continuous_movies$my_rating,predict(glmnet(X2,y,alpha=0),as.matrix(X2),s=fit.cv.lasso_full$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Full GLMNET My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit_mlr_full$fitted.values,col="aquamarine3")
+legend(x = "topleft", title="Models", 
+       legend=c("Lasso Full", "MLR Full"), 
+       fill = c("orchid","aquamarine3"))
+abline(0,1)
+```
+
 Adjusted R Squared at 1 standard deviation for ridge and lasso:
 
 * ridge: `r fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)]`
 * lasso: `r fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)]`
 * mlr: `r summary(fit_lm)$adj.r.squared`
+* full lasso: `r fit_lasso_full$dev.ratio[length(fit_lasso_full$dev.ratio)]`
+* full mlr: `r summary(fit_full)$adj.r.squared`
 
 Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values IMDB count and IMDB rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
+
+When comparing the full models, fit_lasso is highly predictive. Out of the 65 initial variables, it selects 12 variables. Each variables lasso selects has positive coefficients, so the interpretation of the model makes substantially more sense than the full model. However, the lasso model does include multiple versions of similar terms, indicating potential overfitting. For example, it includes imdb_rating, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, and imdb_rating_percentile — all of which are very similar. It repeats this flaw by including imdb_count, imdb_top_1000_count, and log(imdb_count). The only dummy variable lasso includes is is_john_williams.
 
 
 ## Steps with AIC and BIC {.tabset}
 ```{r leaps}
 library(leaps) # procedure from lab
-fit_full = lm(my_rating~.-name+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies) # start by creating a full and add some log terms for values not bounded to a specific range
 fit_null = lm(my_rating~1, data=continuous_movies) # create a null fit to just an intercept
 ```
 ```{r anova}
@@ -356,7 +397,7 @@ legend(x = "topleft", title="Models",
 abline(0,1)
 ```
 
-AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholoson, is_adventure, and imdb_rating. This is unique to this model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a signifcant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
+AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholoson, is_adventure, and imdb_rating. This is unique to this model and the full model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a signifcant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. Based on these selctions, BIC avoids the flaw of lasso including multiple highly correlated variables. Both full lasso and BIC include is_john_williams as the only dummy variable. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
 
 ## General Additive Models {.tabset}
 ```{r load_mgcv, include=FALSE}
@@ -443,7 +484,7 @@ high_residuals = continuous_movies %>% mutate(
   fitted = fit_bic$fitted.values,
   label = ifelse(abs(fit_bic$residuals)>residual_threshold|fitted>85|fitted<15,name,'')
 )
-ggplot(high_residuals, xlim=c(0,100),ylim=c(0,100)) + geom_point(data=high_residuals, aes(x = my_rating, y = fit_bic$fitted.values), color=ifelse(high_residuals$label != '',"firebrick4","aquamarine3")) + geom_abline(aes(intercept=0,slope=1)) + labs(x="My Rating",y="Fitted Values", title="BIC My Rating vs Fitted Values") + geom_text_repel(data=high_residuals, aes(x=my_rating, y=fitted, label=label),max.overlaps = Inf)
+ggplot(high_residuals) + xlim(c(0,100)) + ylim(c(0,100)) + geom_point(data=high_residuals, aes(x = my_rating, y = fit_bic$fitted.values), color=ifelse(high_residuals$label != '',"firebrick4","aquamarine3")) + geom_abline(aes(intercept=0,slope=1)) + labs(x="My Rating",y="Fitted Values", title="BIC My Rating vs Fitted Values") + geom_text_repel(data=high_residuals, aes(x=my_rating, y=fitted, label=label),max.overlaps = Inf)
 ```
 
 ## Predictions
