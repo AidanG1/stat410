@@ -1,0 +1,469 @@
+---
+title: "Stat 410 Aidan's Movies"
+author: "Aidan Gerber"
+date: "4/29/2022"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+  prettydoc::html_pretty:
+    toc: yes
+    toc_depth: 3
+    theme: cayman
+    highlight: tango
+    df_print: paged
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+header-includes: \usepackage{setspace}
+---
+\doublespacing
+```{r setup, include=FALSE}
+# for PDF full
+# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
+# for PDF no code
+# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
+# for html
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svg')
+```
+
+```{r, echo=FALSE, cols.min.print=3}
+library(tidyverse)
+library(zoo)
+movies <- read_csv('movie.csv')
+credits <- read_csv('credit.csv')
+# summary(credits)
+```
+
+# Project statement
+#### What is the purpose of your analysis? What effect are you investigating? Why?
+The purpose of my analysis is to determine what movies I will enjoy the most. I will do this by creating a model with the response variable of how much I liked a movie out of 100 and predicting it with data on various movie reviews, genres, cast and crew, and more. I am doing this so that I can figure out which movies I will want to watch because I can be confident that I will enjoy them.
+
+# Data description
+#### How were the data collected? How do these data help you answer the relevant research questions?
+The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/. In the references there is python code I wrote to turn the mySQL database into a csv.
+Data from TMDB was collected using their open API. Data from IMDB was collected by web scraping their page for awards and finding any Oscars as well as scraping their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
+
+# Exploratory data analysis
+#### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
+None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, in an MLR setting other variables within a specific range work best if they are not transformed such as IMDB rating, between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. When attempting to use uncapped data, they were insignificant. This is evident when looking at IMDB count vs IMDB Top 1000 Count. When using a log transformation, the full IMDB count becomes more significant which makes sense since it includes more data.
+```{r, cols.min.print=3}
+movies_to_print = movies %>% select(name, my_rating, imdb_rating, metacritic_rating, tmdb_rating, imdb_count, tmdb_count, release_date, revenue, budget, award_count, franchise_name, mpaa_name, genres_names, production_company_names)
+movies_to_print 
+```
+
+```{r echo=FALSE, results=FALSE}
+continuous_movies_no_na = movies %>% select(my_rating, imdb_rating, tmdb_rating, tmdb_count, metacritic_rating, budget, revenue, award_count, imdb_count, imdb_arithmetic_mean, imdb_median, imdb_top_1000_rating, imdb_top_1000_count, imdb_us_rating, imdb_us_count, imdb_not_us_rating, imdb_not_us_count) %>% drop_na() # a version of the main dataset where rows with NA metacritic ratings are dropped. Metacritic ratings are the only ones that have NA values since some movies are not reviewed by critics on that site.
+continuous_movies_no_na %>% cor()
+```
+
+```{r}
+imdb_mlr = lm(metacritic_rating ~ imdb_rating + award_count + imdb_top_1000_rating, data=continuous_movies_no_na) # creating a basic MLR to interpolate metacritic ratings from imdb ratings
+
+movies$mpaa_name = as.numeric(as.factor(movies$mpaa_name)) # turning mpaa_name into a factor so that it can be used for levels.
+
+batch_credit_filter = function(movie_ids, person_ids) {
+  # function to create dummy variables of whether a person with a specific id appears in a movie
+  results = data.frame(matrix(ncol = length(person_ids), nrow = 0))
+  for (i in 1:length(movie_ids)) {
+    for (j in 1:length(person_ids)) {
+    creds = credits %>% filter(movie_id==movie_ids[i])
+    results = append(results, ifelse(person_id_param %in% creds$person_id, 1, 0))
+   
+    }
+  }
+  results
+}
+
+continuous_movies = movies %>% # main dplyr code to create the tbl
+  arrange(imdb_rating) %>% # since Metacritic ratings have the highest correlation to IMDB ratings
+  select(uuid,name,my_rating, imdb_rating, tmdb_rating, tmdb_count, metacritic_rating, budget, revenue, runtime, award_count, imdb_count, imdb_arithmetic_mean, imdb_median, imdb_top_1000_rating, imdb_top_1000_count, imdb_us_rating, imdb_us_count, imdb_not_us_rating, imdb_not_us_count,genres_names,mpaa_name,imdb_rating_percentile,tmdb_rating_percentile,metacritic_rating_percentile) %>% # selecting useful continuous columns
+  mutate(metacritic_rating = ifelse(is.na(metacritic_rating), predict(imdb_mlr,data.frame(imdb_rating=imdb_rating, award_count=award_count,imdb_top_1000_rating=imdb_top_1000_rating)), metacritic_rating)) %>% mutate( # interpolating NA metacritic values
+    is_action = ifelse(grepl('Action',genres_names),1,0), # creating dummy variables for different genres
+    is_comedy = ifelse(grepl('Comedy',genres_names),1,0),
+    is_adventure = ifelse(grepl('Adventure',genres_names),1,0),
+    is_animation = ifelse(grepl('Animation',genres_names),1,0),
+    is_family = ifelse(grepl('Family',genres_names),1,0),
+    is_drama = ifelse(grepl('Drama',genres_names),1,0),
+    is_scifi = ifelse(grepl('Science Fiction',genres_names),1,0),
+    is_thriller = ifelse(grepl('Thriller',genres_names),1,0),
+    is_brad_pitt = batch_credit_filter(uuid,'Laq4vXpGTZpfFFqDcHs5KV'), # creating dummy variables for crew members to test significance
+    is_stan_lee = batch_credit_filter(uuid,'QzvrSM5wqckocFLj3AEZaV'),
+    is_christopher_nolan = batch_credit_filter(uuid,'keZ3UQoTZ4XZKb79VUXDgG'),
+    is_spielberg = batch_credit_filter(uuid,'naF68ZLuf7v6upwViuNVUm'),
+    is_harrison_ford = batch_credit_filter(uuid,'GTw4tYdeQmWQ6YdgAa3hGu'),
+    is_matt_damon = batch_credit_filter(uuid,'czP9E4RMt6u9sfTTML9eMR'),
+    is_wes_anderson = batch_credit_filter(uuid,'JVxsaqF8Rxzy3CVxzvQWnd'),
+    is_tom_cruise = batch_credit_filter(uuid,'e4Eiprq53YfhZvwmc8SrLr'),
+    is_john_williams = batch_credit_filter(uuid,'DyCbZvFwBgugBpjDaqx8kk'),
+    is_rdj = batch_credit_filter(uuid,'Bpb5BiRdou7xQHjbU7GUDv'),
+    is_quentin_tarantino = batch_credit_filter(uuid,'QLKZWkzmAovVDJXZN8eu3v'),
+    is_tom_hanks = batch_credit_filter(uuid,'7tqrqC9rgLHtXckENws9Fy'),
+    is_george_lucas = batch_credit_filter(uuid,'DRdnxAsNAZAp7HYsspMMtz'),
+    is_leonardo_dicaprio = batch_credit_filter(uuid,'FuCDtnxehhqRrKqh9qC7Dj'),
+    is_the_rock = batch_credit_filter(uuid,'VbfEpXpRyzNfjTppSLU9ei'),
+    is_stanley_kubrick = batch_credit_filter(uuid,'PfnG2E5kKDAM2PrrUdW9jk'),
+    is_john_hughes = batch_credit_filter(uuid,'CkytgUXum2syFtLkgy9dyi'),
+    is_jim_carrey = batch_credit_filter(uuid,'T2K6TBzwq2qavcVFeGL8Rc'),
+    is_wally_pfister = batch_credit_filter(uuid,'L8jtAQbm3ynBna4857d5j2'),
+    is_henry_fonda = batch_credit_filter(uuid,'K5qeaJKmMQen8dMEqY75F4'),
+    is_morgan_freeman = batch_credit_filter(uuid,'FHCFi8DwCzoJbCRC34DMRj'),
+    is_bong_joon_ho = batch_credit_filter(uuid,'VhJUKLUtNBFJsHcSTiAyMy'),
+    is_dustin_hoffman = batch_credit_filter(uuid,'gc7HESshGq5Lh7gD2MH6wR'),
+    is_arnold_schwarz = batch_credit_filter(uuid,'JYP3ANQFwkmsQYPGwj77gk'),
+    is_jack_nicholson = batch_credit_filter(uuid,'VxqAcnJqT6d7vjcHcpXQoL'),
+    is_aamir_khan = batch_credit_filter(uuid,'jWk22meEpdCAhTdpKCfBxg'),
+    is_sean_connery = batch_credit_filter(uuid,'57UUtEPqsvkpCSmeGPraq8'),
+    is_brad_bird = batch_credit_filter(uuid,'AbANa443DEn6zfpidFA73z'),
+    is_natalie_portman = batch_credit_filter(uuid,'JSN7GommYrTooGeh5WzvPg'),
+    is_robin_williams = batch_credit_filter(uuid,'C56iyMS2VJXc6gnW3ezcDC'),
+    is_sandra_bullock = batch_credit_filter(uuid,'efknfaN8AeojtnMGCfzVR8'),
+    is_bill_murray = batch_credit_filter(uuid,'aDeM2LwCunLFnKR4YaziPa'),
+  ) %>% select(-genres_names,-uuid)
+cor_matrix = continuous_movies %>% select(-name) %>% cor()# creating correlation matrix
+cor_matrix[1,]
+high_cor_cm = continuous_movies %>% select(my_rating,imdb_rating,tmdb_rating,imdb_count,metacritic_rating,award_count)
+```
+This R code creates the main dataset that I am analyzing. The first thing I did was deciding to interpolate null values rather than removing than. The only category will null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
+
+The next step was to make mpaa_name a numeric factor allowing it to be used as a dummy variable. The most common MPAA ratings for movies that I have seen are PG-13(209), PG(179), R(135), G(27), and NR(21).
+
+After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns.
+
+Finally, it was time to use dplyr to get the dataset. I began by arranging by IMDB rating since Metacritic ratings are most related to IMDB ratings. Then, I selected the desired columns from the larger dataset. After that, I created dummy variables for both genres and crew.
+
+* I chose every genre that I have seen more than 100 movies from. 
+  + Comedy(`r sum(continuous_movies$is_comedy)`)
+  + Adventure(`r sum(continuous_movies$is_adventure)`)
+  + Action(`r sum(continuous_movies$is_action)`)
+  + Drama(`r sum(continuous_movies$is_drama)`)
+  + Family(`r sum(continuous_movies$is_family)`)
+  + Science Fiction(`r sum(continuous_movies$is_scifi)`)
+  + Animation(`r sum(continuous_movies$is_animation)`)
+  + Thriller(`r sum(continuous_movies$is_thriller)`)
+
+Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to significant and have them whittled down through AIC and BIC.
+
+Looking at the correlation matrix of my rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
+
+``` {r, fig.cap = "Scatterplot pairs of notable continuous variables in the dataset"}
+pairs(high_cor_cm) # graphing pairs of specific values
+```
+
+# Data analysis
+#### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
+I tried fitting many different models including SLRs, MLRs, polynomials, montone transformations, ridge, lasso, and GAMs.
+
+# Models
+## SLR
+```{r}
+# begin with some simple models
+fit1 = lm(my_rating~imdb_rating, data=continuous_movies)
+summary(fit1)
+fit2 = lm(my_rating~metacritic_rating, data=continuous_movies)
+summary(fit2)
+fit3 = lm(my_rating~tmdb_rating, data=continuous_movies)
+summary(fit3)
+
+
+plot(continuous_movies$my_rating, fit1$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit2$fitted.values,col="aquamarine3")
+points(continuous_movies$my_rating,fit3$fitted.values,col="firebrick4")
+legend(x = "topleft", title="Models", bg="transparent",
+       legend=c("IMDB", "TMDB",'Metacritic'),
+       fill = c("orchid","aquamarine3",'firebrick4'))
+abline(0,1)
+```
+
+## MLR
+```{r}
+fit4 = lm(my_rating~imdb_rating+metacritic_rating+tmdb_rating,data=continuous_movies) # create an MLR with just movie ratings from other sources
+summary(fit4)
+fit5 = lm(my_rating~.-name,data=continuous_movies) # create an MLR with all linear terms
+summary(fit5)
+fit6 = lm(my_rating~imdb_count+imdb_top_1000_count+imdb_us_count+imdb_not_us_count,data=continuous_movies)
+summary(fit6) # create an MLR with just movie rating counts
+
+plot(continuous_movies$my_rating, fit4$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit5$fitted.values,col="aquamarine3")
+points(continuous_movies$my_rating,fit6$fitted.values,col="firebrick4")
+legend(x = "topleft", title="Models", bg="transparent",
+       legend=c("IMDB+TMDB+Metacritic", "All",'All Counts'),
+       fill = c("orchid","aquamarine3",'firebrick4'))
+abline(0,1)
+```
+
+## Transformed and Polynomial MLRs
+```{r}
+fit7 = lm(sqrt(my_rating)~.-name,data=continuous_movies) # MLR with full model to sqrt of my rating
+summary(fit7)
+fit8 = lm(my_rating~log(imdb_count)+imdb_rating,data=continuous_movies) # simple model with my_rating to imdb_rating and log(imdb_count)
+summary(fit8)
+fit9 = lm(my_rating~imdb_rating+I(imdb_rating^2)+I(imdb_rating^3),data=continuous_movies) # fitting a cubic model with imdb_rating
+summary(fit9)
+fit10 = lm(sqrt(my_rating)~sqrt(imdb_count)+sqrt(imdb_rating), data=continuous_movies) # fitting with sqrts
+summary(fit10)
+fit11 = lm(my_rating ~ polym(imdb_rating, imdb_count,award_count, degree=5, raw=TRUE),data=continuous_movies) # fitting with a very big polynomial
+# summary(fit11)
+
+plot(continuous_movies$my_rating, fit7$fitted.values^2,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit8$fitted.values,col="aquamarine3")
+points(continuous_movies$my_rating,fit9$fitted.values,col="firebrick4")
+points(continuous_movies$my_rating,fit10$fitted.values^2,col="navajowhite")
+points(continuous_movies$my_rating,fit11$fitted.values^2,col="royalblue")
+legend(x = "topleft", title="Models", bg="transparent",
+       legend=c("SQRT~All", "IMDB+log(imdb_count)",'IMDB^3','SQRT~SQRT','polym'),
+       fill = c("orchid","aquamarine3",'firebrick4','navajowhite','royalblue'))
+abline(0,1)
+```
+
+## Ridge and Lasso {.tabset}
+```{r echo=FALSE}
+library(glmnet)
+set.seed(1)
+```
+Create data matrix to be used for both ridge and lasso.
+```{r}
+X = model.matrix(~ -1 + sqrt(imdb_count) + imdb_rating + sqrt(award_count), data = continuous_movies) # model to use for ridge and lasso fits
+y = continuous_movies$my_rating
+fit_lm = lm(my_rating ~ sqrt(imdb_count)+ imdb_rating + sqrt(award_count), data = continuous_movies) # non-ridge and lasso to compare to
+```
+### Ridge
+```{r}
+fit_ridge = glmnet(X,y,alpha=0) # ridge fit
+fit.cv.ridge = cv.glmnet(X,y,alpha=0)
+plot(fit.cv.ridge)
+```
+
+### Lasso
+```{r}
+fit_lasso = glmnet(X,y,alpha=1) # lasso fit
+fit.cv.lasso = cv.glmnet(X,y,alpha=1)
+plot(fit.cv.lasso)
+```
+
+### Comparison
+```{r}
+beta_hat_mlr = coef(fit_lm)
+beta_hat_ridge = coef(fit.cv.ridge, s = "lambda.1se")
+beta_hat_lasso = coef(fit.cv.lasso, s = "lambda.1se")
+cbind(beta_hat_mlr, beta_hat_ridge, beta_hat_lasso)
+
+plot(continuous_movies$my_rating,predict(glmnet(X,y,alpha=0),as.matrix(X),s=fit.cv.ridge$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,predict(glmnet(X,y,alpha=1),as.matrix(X),s=fit.cv.lasso$lambda.1se),col="aquamarine3")
+points(continuous_movies$my_rating,fit_lm$fitted.values,col="firebrick4")
+legend(x = "topleft", title="Models", 
+       legend=c("Ridge", "Lasso", "MLR"), 
+       fill = c("orchid","aquamarine3",'firebrick4'))
+abline(0,1)
+```
+
+* Adjusted R Squared at 1 standard deviation for ridge and lasso:
+  + ridge: `r fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)]`
+  + lasso: `r fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)]`
+  + mlr: `r summary(fit_lm)$adj.r.squared`
+Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values IMDB count and IMDB rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
+
+
+## Steps with AIC and BIC {.tabset}
+```{r}
+library(leaps) # procedure from lab
+fit_full = lm(my_rating~.-name+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies) # start by creating a full and add some log terms for values not bounded to a specific range
+fit_null = lm(my_rating~1, data=continuous_movies) # create a null fit to just an intercept
+```
+```{r}
+anova(fit_null,fit_full,test='F') # make sure that the full fit is more significant than the null fit
+```
+Because the p-value for the ful model is significant in comparison to the null model, it makes sense to continue with AIC and BIC to find a significant model. The use of AIC and BIC is to penalize adding more parameters because any parameter improves the fit. 
+```{r, results='hide'}
+fit_aic = step(fit_null,list(upper=fit_full),direction='forward') # run AIC
+n = nrow(continuous_movies)
+fit_bic = step(fit_null,list(upper=fit_full),direction='forward',k=log(n)) # run BIC
+```
+```{r}
+summary(fit_aic)
+summary(fit_bic)
+AIC(fit_bic)
+plot(continuous_movies$my_rating, fit_aic$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit_bic$fitted.values,col="aquamarine3")
+legend(x = "topleft", title="Models", 
+       legend=c("AIC", "BIC"), 
+       fill = c("orchid","aquamarine3"))
+abline(0,1)
+```
+
+AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholoson, is_adventure, and imdb_rating. This is unique to this model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a signifcant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
+
+## General Additive Models {.tabset}
+```{r}
+library(mgcv)
+```
+### Large GAM
+```{r}
+fit_gam1 = gam(my_rating~s(imdb_rating)+s(metacritic_rating)+s(tmdb_rating)+s(imdb_count)+s(award_count)+s(runtime),data=continuous_movies)
+summary(fit_gam1)
+```
+### GAM with Transformations and Extra Terms
+```{r}
+fit_gam2 = gam(my_rating~s(imdb_rating)+s(metacritic_rating)+s(tmdb_rating)+s(sqrt(imdb_count))+s(sqrt(award_count))+s(runtime)+s(budget)+s(imdb_arithmetic_mean),data=continuous_movies)
+summary(fit_gam2)
+```
+### GAM with Genre Interactions to IMDB Rating and Revenue
+```{r}
+fit_gam3 = gam(my_rating~imdb_rating*is_animation+imdb_rating*is_family + imdb_rating*is_adventure + imdb_rating*is_action+imdb_rating*is_drama+imdb_rating*is_comedy+imdb_rating*is_thriller+imdb_rating*is_scifi+s(imdb_count)+imdb_rating*mpaa_name+revenue*is_animation+revenue*is_action+revenue*is_drama+revenue*is_comedy+revenue*is_thriller+revenue*is_scifi,data=continuous_movies)
+summary(fit_gam3)
+```
+### GAM with BIC Variables
+```{r}
+fit_gam4 = gam(my_rating~s(imdb_rating)+s(imdb_count)+is_john_williams+log(imdb_count)*is_john_williams,data=continuous_movies)
+summary(fit_gam4)
+```
+
+### Comparison
+```{r}
+plot(continuous_movies$my_rating, fit_gam1$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
+points(continuous_movies$my_rating,fit_gam2$fitted.values,col="aquamarine3")
+points(continuous_movies$my_rating,fit_gam3$fitted.values,col="firebrick4")
+points(continuous_movies$my_rating,fit_gam4$fitted.values,col="navajowhite")
+legend(x = "topleft", title="Models", bg="transparent",
+       legend=c("GAM 1", "GAM 2", "GAM 3", "GAM 4"), 
+       fill = c("orchid","aquamarine3",'firebrick4','navajowhite'))
+abline(0,1)
+```
+
+```{r, results='hide', fig.show='hide'}
+plot(fit_gam1)
+plot(fit_gam2)
+plot(fit_gam3)
+plot(fit_gam4)
+```
+The fit plots have been withheld for spacing reasons. 
+For the first gam:
+IMDB rating and metacritic rating are linear. TMDB rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in TMDB rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. IMDB count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating.
+
+For the second gam: 
+All terms are linear except for TMDB rating, runtime, and budget TMDB rating and runtime have already been discussed. IMDB arithmetic rating is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the public IMDB rating is calculated vs the arithmetic mean. The public IMDB rating is calculated using a secret formula to prevent review bombing and is actually a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean and that the weighted average used by IMDB is useful. 
+```{r, echo=FALSE}
+budget_not0 = continuous_movies%>%filter(budget!=0)
+budget_0 = continuous_movies%>%filter(budget==0)
+budget_not0 = mean(budget_not0$imdb_count)
+budget_0 = mean(budget_0$imdb_count)
+```
+For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, more than 10 times smaller.
+
+# Summary and discussion
+#### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
+The main conclusions of my analysis 
+
+# References
+#### What are the sources for the data and any additional statistical resources that you used to support your analysis?
+
+* Data sources:
+  + [https://www.themoviedb.org/documentation/api](TMDB API)
+  + [https://www.imdb.com/](IMDB Website)
+  + [https://www.tradethisandthat.com/movies/](Personal Movie Website)
+```{py, results=FALSE}
+from django.core.management.base import BaseCommand
+from movies.models import *
+import csv, os
+
+
+class Command(BaseCommand):
+    help = 'create full database from csv'
+
+    def handle(self, *args, **options):
+        FOLDER = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(FOLDER, './csv/movie.csv'), 'w',
+                  encoding='UTF8', newline='') as csvfile:
+            filewriter = csv.writer(csvfile)
+            filewriter.writerow(
+                ['uuid', 'franchise_id', 'mpaa_id', 'imdb_rating', 'metacritic_rating', 'my_rating', 'tmdb_id',
+                 'imdb_id', 'name', 'tmdb_rating', 'tmdb_count', 'poster', 'runtime', 'release_date', 'recent_watch',
+                 'viewing_count', 'release_day', 'release_month', 'release_year', 'revenue', 'budget',
+                 'distance_from_rating_average', 'my_rating_percentile', 'imdb_rating_percentile',
+                 'tmdb_rating_percentile', 'metacritic_rating_percentile', 'genre_ids', 'award_ids', 'award_count',
+                 'production_company_ids', 'franchise_name', 'mpaa_name', 'genres_names', 'genre_numbers',
+                 'award_names', 'production_company_names', 'imdb_count', 'imdb_arithmetic_mean', 'imdb_median',
+                 'imdb_top_1000_rating', 'imdb_top_1000_count', 'imdb_us_rating', 'imdb_us_count', 'imdb_not_us_rating',
+                 'imdb_not_us_count']
+            )
+            genres = WatchInfo.objects.filter(watch_info_type='Genre')
+            genre_dict = {genre: i for i, genre in enumerate(genres)}
+            for movie in Movie.objects.all():
+                filewriter.writerow(
+                    [movie.uuid, (movie.franchise_id if movie.franchise is not None else ''),
+                     (movie.mpaa_rating_id if movie.mpaa_rating is not None else ''), movie.imdb_rating,
+                     movie.metacritic_rating, movie.my_rating_field, movie.tmdb_id, movie.imdb_id, movie.name,
+                     movie.tmdb_rating, movie.tmdb_count, movie.poster, movie.runtime, movie.release_date,
+                     movie.recent_watch, movie.viewing_count, movie.release_day.name, movie.release_month.name,
+                     movie.release_year.name, movie.revenue, movie.budget, movie.distance_from_rating_average,
+                     movie.rating_percentile, movie.imdb_rating_percentile, movie.tmdb_rating_percentile,
+                     movie.metacritic_rating_percentile,
+                     [x.pk for x in movie.genres.all()], [x.pk for x in movie.awards.all()], movie.award_count,
+                     [x.pk for x in movie.production_companies.all()],
+                     (movie.franchise.name if movie.franchise is not None else ''),
+                     (movie.mpaa_rating.name if movie.mpaa_rating is not None else ''),
+                     [x.name for x in movie.genres.all()], [genre_dict[x] for x in movie.genres.all()],
+                     [x.name for x in movie.awards.all()],
+                     [x.name for x in movie.production_companies.all()], movie.imdb_count, movie.imdb_arithmetic_mean,
+                     movie.imdb_median, movie.imdb_top_1000_rating, movie.imdb_top_1000_count, movie.imdb_us_rating,
+                     movie.imdb_us_count, movie.imdb_not_us_rating, movie.imdb_not_us_count
+                     ]
+                )
+        with open(os.path.join(FOLDER, './csv/place.csv'), 'w',
+                  encoding='UTF8', newline='') as csvfile:
+            filewriter = csv.writer(csvfile)
+            filewriter.writerow(['uuid', 'city', 'state', 'country'])
+            for place in Place.objects.all():
+                filewriter.writerow([place.uuid, place.city, place.state, place.country])
+        with open(os.path.join(FOLDER, './csv/person.csv'), 'w',
+                  encoding='UTF8', newline='') as csvfile:
+            filewriter = csv.writer(csvfile)
+            filewriter.writerow(
+                ['uuid', 'tmdb_id', 'name', 'main_role', 'birth_place_id', 'image', 'number_of_movies', 'total_rating',
+                 'credit_weighted_score']
+            )
+            for person in Person.objects.all():
+                filewriter.writerow([person.uuid, person.tmdb_id, person.name, person.main_role,
+                                     (person.birth_place_id if person.birth_place is not None else ''), person.image,
+                                     person.number_of_movies_field, person.total_rating_field,
+                                     person.credit_order_weighted_score_field])
+        with open(os.path.join(FOLDER, './csv/watch_info.csv'), 'w',
+                  encoding='UTF8', newline='') as csvfile:
+            filewriter = csv.writer(csvfile)
+            filewriter.writerow(
+                ['uuid', 'name', 'type', 'movie_count', 'category_average', ]
+            )
+            for watch_info in WatchInfo.objects.all():
+                filewriter.writerow(
+                    [watch_info.uuid, watch_info.name, watch_info.watch_info_type, watch_info.movie_count,
+                     watch_info.category_average])
+            with open(os.path.join(FOLDER, './csv/viewing.csv'), 'w',
+                      encoding='UTF8', newline='') as csvfile:
+                filewriter = csv.writer(csvfile)
+                filewriter.writerow(
+                    ['uuid', 'movie_id', 'watch_date', 'watch_location_id', 'watch_device_id', 'watch_platform_id',
+                     'viewing_people_ids', 'review', 'my_rating']
+                )
+                for viewing in Viewing.objects.all():
+                    filewriter.writerow([viewing.uuid, viewing.movie_id, viewing.watch_date,
+                                         (viewing.watch_location_id if viewing.watch_location is not None else ''),
+                                         (viewing.watch_device_id if viewing.watch_device is not None else ''),
+                                         (viewing.watch_platform_id if viewing.watch_platform is not None else ''),
+                                         [x.pk for x in viewing.people_with.all()], viewing.review, viewing.my_rating])
+            with open(os.path.join(FOLDER, './csv/credit.csv'), 'w',
+                      encoding='UTF8', newline='') as csvfile:
+                filewriter = csv.writer(csvfile)
+                filewriter.writerow(
+                    ['uuid', 'person_id', 'movie_id', 'department', 'character_job', 'order', 'order_score',
+                     'order_weighted_score']
+                )
+                for credit in Credit.objects.all():
+                    filewriter.writerow(
+                        [credit.uuid, credit.person_id, credit.movie_id, credit.department, credit.character_job,
+                         credit.order, credit.order_score, credit.credit_order_weighted_score])
+```
+# Code and data
+#### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
+Code and data included throughout.
