@@ -1,9 +1,12 @@
 ---
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+# knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "April 29th, 2022"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
   prettydoc::html_pretty:
     toc: yes
     toc_depth: 3
@@ -12,9 +15,6 @@ output:
     df_print: paged
     includes:
       in_header: header.html
-  pdf_document:
-    toc: yes
-    toc_depth: '3'
   html_document:
     toc: yes
     toc_depth: '3'
@@ -31,11 +31,11 @@ options(digits = 2)
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
-# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
-# SHOW_BACK_TO_TOP=FALSE
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide')
+SHOW_BACK_TO_TOP=FALSE
 # for html with svg
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
-SHOW_BACK_TO_TOP=TRUE
+# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
+# SHOW_BACK_TO_TOP=TRUE
 ```
 
 ```{r imports, echo=FALSE, cols.min.print=3}
@@ -51,7 +51,9 @@ credits <- read_csv('credit.csv')
 
 ```{r conditional_block0, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat("# [Aidan's Movies](https://www.tradethisandthat.com/movies/)
-# [Source Code](https://github.com/AidanG1/stat410)")
+# [Source Code](https://github.com/AidanG1/stat410)
+# [PDF Form](https://stat.aidang.me/finalProject.pdf)"
+)
 ```
 
 # Project statement
@@ -481,13 +483,13 @@ cat('<a href="#top">Back to top</a>')
 
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
 
-Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includesa smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
+Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
 
 ```{r coef, include=FALSE}
 coefs = coef(summary(fit_bic))
 ```
 
-Interpretation. A movie with an IMDB rating of 0, that has been seen by 1 person, and does not have John Williams would be expected to have a rating of `r coefs[1]`. For each 1 unit increase in IMDB rating, holding all else equal, my expected rating increases by `r coefs[1]`. For each 1 unit increase in log(IMDB count), holding all else equal, my expected rating increases by `r coefs[2]`. If John Williams is credited in the movie, holding all else equal, my expected rating increases by `r coefs[3]`.
+Interpretation. A movie with an IMDB rating of 0, that has been seen by 1 person, and does not have John Williams would be expected to have a rating of `r coefs[1]`. For each 1 unit increase in imdb_rating, holding all else equal, my expected rating increases by `r coefs[1]`. For each 1 unit increase in log(imdb_count), holding all else equal, my expected rating increases by `r coefs[2]`. If John Williams is credited in the movie, holding all else equal, my expected rating increases by `r coefs[3]`.
 
 My largest conclusion in this project is that predicting my ratings if very difficult and that adjusted r squared of around 0.47 are the best I am going to do. I reached this conclusion since I fit many different models and ended up with results consistently similar despite highly different betas. Even with these varied betas, models consistently overpredicted low values and undepredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
 
@@ -521,12 +523,18 @@ ggplot(high_residuals) + xlim(c(0,100)) + ylim(c(0,100)) + geom_point(data=high_
 ```
 
 ## Diagnostics
+```{r conditional_block7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 ```{r bic_diagnostics, echo=FALSE}
-plot(fit_bic)
+plt_bic = plot(fit_bic)
 ```
 Out of the fit diagnostics, residuals vs fitted and residuals vs leverage both look good. The normal QQ plot tails off slightly below for higher theoretical quantiles but stays on the line for most of the points, This tailing off is because my ratings are bounded between 0 and 100 while a normal distribution is not. This result is not worrying and errors can be treated as Gaussian. The scale location plot contains a slightly downward slope at higher fitted values. This is okay because the data is much sparser at those values so the final model assumptions for MLR still hold.
 
 ## Predictions
+```{r conditional_block8, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
 
 The movies being predicted are the most reviewed movies on IMDB that I have not seen. In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.
 
@@ -541,7 +549,7 @@ These predictions are mostly reasonable but they do fall within very large range
 Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and with careful variable, it is possible to get a relatively accurate model with high interpretability.
 
 # References 
-```{r conditional_block7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+```{r conditional_block9, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
@@ -654,7 +662,7 @@ class Command(BaseCommand):
                          credit.order, credit.order_score, credit.credit_order_weighted_score])
 ```
 # Code and data 
-```{r conditional_block8, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+```{r conditional_block10, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
