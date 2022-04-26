@@ -25,6 +25,8 @@ header-includes: \usepackage{setspace}
 ---
 \doublespacing
 ```{r setup, include=FALSE}
+options(scipen=999)
+options(digits = 2)
 # for PDF full
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
@@ -41,6 +43,7 @@ library(tidyverse)
 library(zoo)
 library(kit)
 library(ggrepel)
+library(papeR)
 movies <- read_csv('movie.csv')
 credits <- read_csv('credit.csv')
 # summary(credits)
@@ -66,8 +69,8 @@ cat('<a href="#top">Back to top</a>')
 ```
 
 #### How were the data collected? How do these data help you answer the relevant research questions?
-The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/. In the references there is python code I wrote to turn the mySQL database into a csv.
-Data from TMDB was collected using their open API. Data from IMDB was collected by web scraping their page for awards and finding any Oscars as well as scraping their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
+The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/ and a full version is available on the project website: https://stat.aidang.me/continuous_movies.csv. In the references there is python code I wrote to turn the mySQL database into a csv using Django.
+Data from TMDB was collected using their API. Data from IMDB was collected by web scraping their page for awards and their page for rating distributions. Much of the data is gotten with python code that I run on movie addition with Django. My rating and metacritic ratings are collected by me.
 
 # Exploratory data analysis 
 ```{r conditional_block3, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
@@ -75,7 +78,7 @@ cat('<a href="#top">Back to top</a>')
 ```
 
 #### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
-None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, in an MLR setting other variables within a specific range work best if they are not transformed such as IMDB rating, between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. When attempting to use uncapped data, they were insignificant. This is evident when looking at IMDB count vs IMDB Top 1000 Count. When using a log transformation, the full IMDB count becomes more significant which makes sense since it includes more data.
+
 ```{r movies_print, cols.min.print=3}
 movies_to_print = movies %>% select(name, my_rating, imdb_rating, metacritic_rating, tmdb_rating, imdb_count, tmdb_count, release_date, revenue, budget, award_count, franchise_name, mpaa_name, genres_names, production_company_names)
 movies_to_print 
@@ -89,8 +92,6 @@ continuous_movies_no_na = movies %>% select(my_rating, imdb_rating, tmdb_rating,
 ```{r continuous_movies}
 create_continuous_movies = function() {
   imdb_mlr = lm(metacritic_rating ~ imdb_rating + award_count + imdb_top_1000_rating, data=continuous_movies_no_na) # creating a basic MLR to interpolate metacritic ratings from imdb ratings
-  
-  movies$mpaa_name = as.numeric(as.factor(movies$mpaa_name)) # turning mpaa_name into a factor so that it can be used for levels.
   
   batch_credit_filter = function(movie_ids, person_id_param) {
     # function to create dummy variables of whether a person with a specific id appears in a movie
@@ -114,6 +115,11 @@ create_continuous_movies = function() {
       is_drama = ifelse(grepl('Drama',genres_names),1,0),
       is_scifi = ifelse(grepl('Science Fiction',genres_names),1,0),
       is_thriller = ifelse(grepl('Thriller',genres_names),1,0),
+      is_rated_g = ifelse(mpaa_name=='G',1,0),
+      is_rated_pg = ifelse(mpaa_name=='PG',1,0),
+      is_rated_pg13 = ifelse(mpaa_name=='PG-13',1,0),
+      is_rated_r = ifelse(mpaa_name=='R',1,0),
+      is_rated_nr = ifelse(mpaa_name=='NR',1,0),
       is_brad_pitt = batch_credit_filter(uuid,'Laq4vXpGTZpfFFqDcHs5KV'), # creating dummy variables for crew members to test significance
       is_stan_lee = batch_credit_filter(uuid,'QzvrSM5wqckocFLj3AEZaV'),
       is_christopher_nolan = batch_credit_filter(uuid,'keZ3UQoTZ4XZKb79VUXDgG'),
@@ -146,7 +152,7 @@ create_continuous_movies = function() {
       is_robin_williams = batch_credit_filter(uuid,'C56iyMS2VJXc6gnW3ezcDC'),
       is_sandra_bullock = batch_credit_filter(uuid,'efknfaN8AeojtnMGCfzVR8'),
       is_bill_murray = batch_credit_filter(uuid,'aDeM2LwCunLFnKR4YaziPa'),
-    ) %>% select(-genres_names,-uuid)
+    ) %>% select(-genres_names,-uuid,-mpaa_name)
   continuous_movies
 }
 USE_CACHED = TRUE
@@ -159,12 +165,13 @@ if (USE_CACHED) {
 cor_matrix = continuous_movies %>% select(-name) %>% cor()# creating correlation matrix
 cor_matrix[1,]
 ```
-This R code creates the main dataset that I am analyzing. The first thing I did was deciding to interpolate null values rather than removing than. The only category with null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
 
-The next step was to make mpaa_name a numeric factor allowing it to be used as a dummy variable. The most common MPAA ratings for movies that I have seen are PG-13(209), PG(179), R(135), G(27), and NR(21).
-
+None of the variables are too highly related to my rating. The highest correlations are to imdb_rating, tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Ratings like imdb_rating, imdb_arithmetic_mean, imdb_us_rating, imdb_not_us_rating, and imdb_top_1000_rating are highly correlated. Moreover, imdb_ratings and tmdb_rating are also correlated (r=`r cor(continuous_movies$imdb_rating, continuous_movies$tmdb_rating)`). Metacritic rating and imdb_median have weaker correlations, r=`r cor(continuous_movies$imdb_rating, continuous_movies$metacritic_rating)` and r=`r cor(continuous_movies$imdb_rating, continuous_movies$imdb_median)`, respectively. A similar story holds true for the count variables imdb_count, imdb_us_count, and imdb_not_us_count. The correlation between log(imdb_count) and log(tmdb_count) is even `r cor(log(continuous_movies$imdb_count), log(continuous_movies$tmdb_count))`.
+Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, other variables within a specific range work best if they are not transformed such as IMDB rating between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. 
+To create the main dataset for analysis the first thing I did was deciding to interpolate null values rather than removing them The only category with null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
+The next step was to make dummy variables for MPAA ratings. The most common MPAA ratings for movies that I have seen are:
+`r sort(table(continuous_movies$mpaa_name), decreasing = TRUE)[1:5]`
 After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns.
-
 Finally, it was time to use dplyr to get the dataset. I began by arranging by IMDB rating since Metacritic ratings are most related to IMDB ratings. Then, I selected the desired columns from the larger dataset. After that, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
 
 * Comedy(`r sum(continuous_movies$is_comedy)`)
@@ -176,11 +183,11 @@ Finally, it was time to use dplyr to get the dataset. I began by arranging by IM
 * Animation(`r sum(continuous_movies$is_animation)`)
 * Thriller(`r sum(continuous_movies$is_thriller)`)
 
-Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to significant and have them whittled down through AIC and BIC.
+Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to significant and have them whittled down through AIC, BIC, and other selection methods.
+An extra step was creating a caching method since creating continuous_movies takes a few minutes each time. For just the people, it performs `r 32*length(credits$person_id)` calculations.
+Looking at the correlation matrix of my rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For MPAA ratings, r has a positive correlation and pg13 has a negative correlation. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
 
-Looking at the correlation matrix of my rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
-
-```{r pairs}
+```{r pairs, echo=FALSE}
 high_cor_cm = continuous_movies %>% select(my_rating,imdb_rating,tmdb_rating,imdb_count,metacritic_rating,award_count)
 pairs(high_cor_cm) # graphing pairs of specific values
 ```
@@ -193,24 +200,24 @@ cat('<a href="#top">Back to top</a>')
 #### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
 I tried fitting many different models including SLRs, MLRs, polynomials, montone transformations, ridge, lasso, and GAMs.
 
-# Models
-```{r conditional_block5, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+## SLR
+```{r conditional_block5_1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-## SLR
 ```{r slr}
 # begin with some simple models
 fit_slr_imdb = lm(my_rating~imdb_rating, data=continuous_movies)
-summary(fit_slr_imdb)
+prettify(summary(fit_slr_imdb))
 fit_slr_metacritic = lm(my_rating~metacritic_rating, data=continuous_movies)
-summary(fit_slr_metacritic)
+prettify(summary(fit_slr_metacritic))
 fit_slr_tmdb = lm(my_rating~tmdb_rating, data=continuous_movies)
-summary(fit_slr_tmdb)
+prettify(summary(fit_slr_tmdb))
 fit_slr_award = lm(my_rating~imdb_top_1000_count, data=continuous_movies)
-summary(fit_slr_award)
+prettify(summary(fit_slr_award))
+```
 
-
+```{r slr_plot, echo=FALSE}
 plot(continuous_movies$my_rating, fit_slr_imdb$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="SLR My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_slr_metacritic$fitted.values,col="aquamarine3")
 points(continuous_movies$my_rating,fit_slr_tmdb$fitted.values,col="firebrick4")
@@ -220,17 +227,22 @@ legend(x = "topleft", title="Models", bg="transparent",
        fill = c("orchid","aquamarine3",'firebrick4','navajowhite'))
 abline(0,1)
 ```
-Each of these SLRs have substantial flaws. IMDB ratings are most predictive with an adjusted r squared of `r summary(fit_slr_imdb)$adj.r.squared`, higher than the other models. Each of the models have relatively low betas. This is because RSS highly penalizes particularly far values so it places values toward the center of the range. This is especially apparent for Metacritic which has a beta hat of `r as.numeric(coef(fit_slr_metacritic)[2])`. This means that the total range of predictions `r min(continuous_movies$metacritic_rating)*as.numeric(coef(fit_slr_metacritic)[2]) + as.numeric(coef(fit_slr_metacritic)[1])` to `r max(continuous_movies$metacritic_rating)*as.numeric(coef(fit_slr_metacritic)[2]) + as.numeric(coef(fit_slr_metacritic)[1])` despite my rating range going between `r min(continuous_movies$my_rating)` to `r max(continuous_movies$my_rating)`.
+Each of these SLRs have substantial flaws. IMDB ratings are most predictive with an adjusted r squared of `r summary(fit_slr_imdb)$adj.r.squared`, higher than the other models. Each of the models have relatively low betas. This is because RSS highly penalizes particularly far values so it places values toward the center of the range. This is especially apparent for Metacritic which has a beta hat of `r as.numeric(coef(fit_slr_metacritic)[2])`. This means that the total range of predictions is `r min(continuous_movies$metacritic_rating)*as.numeric(coef(fit_slr_metacritic)[2]) + as.numeric(coef(fit_slr_metacritic)[1])` to `r max(continuous_movies$metacritic_rating)*as.numeric(coef(fit_slr_metacritic)[2]) + as.numeric(coef(fit_slr_metacritic)[1])` despite my rating range going from `r min(continuous_movies$my_rating)` to `r max(continuous_movies$my_rating)`.
 
 ## MLR
+```{r conditional_block5_2, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r mlr}
 fit_mlr_rating = lm(my_rating~imdb_rating+metacritic_rating+tmdb_rating,data=continuous_movies) # create an MLR with just movie ratings from other sources
-summary(fit_mlr_rating)
+prettify(summary(fit_mlr_rating))
 fit_mlr_count = lm(my_rating~imdb_count+imdb_top_1000_count+imdb_us_count+imdb_not_us_count,data=continuous_movies)
-summary(fit_mlr_count) # create an MLR with just movie rating counts
+prettify(summary(fit_mlr_count)) # create an MLR with just movie rating counts
 fit_mlr_full = lm(my_rating~.-name,data=continuous_movies) # create an MLR with all linear terms
-summary(fit_mlr_full)
-
+prettify(summary(fit_mlr_full))
+```
+```{r mlr_plot, echo=FALSE}
 plot(continuous_movies$my_rating, fit_mlr_rating$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="MLR My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_mlr_count$fitted.values,col="aquamarine3")
 points(continuous_movies$my_rating,fit_mlr_full$fitted.values,col="firebrick4")
@@ -242,12 +254,17 @@ abline(0,1)
 The full MLR is an improvement but all ratings and all counts models are not particularly effective. Looking at the ratings MLR, the only significant term is the IMDB rating and the adjusted r squared only increases `r summary(fit_mlr_rating)$adj.r.squared-summary(fit_slr_imdb)$adj.r.squared` between the 2 models. Although many of the counts are significant, the overall model r squared is quite low at `r summary(fit_mlr_count)$adj.r.squared`. This occurs because of the uncapped counts that I mentioned in data analysis.
 
 ## Transformed and Polynomial MLRs
+```{r conditional_block5_3, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r transform}
 fit_full = lm(my_rating~.-name+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies) # start by creating a full and add some log terms for values not bounded to a specific range
-summary(fit_full)
+prettify(summary(fit_full))
 fit_log_count = lm(my_rating~log(imdb_count)+imdb_rating,data=continuous_movies) # simple model with my_rating to imdb_rating and log(imdb_count)
-summary(fit_log_count)
-
+prettify(summary(fit_log_count))
+```
+```{r transform_plot, echo=FALSE}
 plot(continuous_movies$my_rating, fit_full$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Transformations My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_log_count$fitted.values,col="aquamarine3")
 legend(x = "topleft", title="Models", bg="transparent",
@@ -259,16 +276,20 @@ abline(0,1)
 The full fit is able to get a high r squared of `r summary(fit_full)$adj.r.squared` because it includes many different variables and can be granular about matching them. However, many of the coefficients it chooses do not make sense for interpretation such as negative betas for imdb_rating and various counts. Moreover, the simpler model with just log(imdb_count) and imdb_rating is much more interpretable as both models have positive betas as expected.
 
 ## Polynomial and Interaction
+```{r conditional_block5_4, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r polynomial_interaction}
 fit_poly_imdb = lm(my_rating~poly(imdb_rating, degree=5),data=continuous_movies) # fitting a cubic model with imdb_rating
-summary(fit_poly_imdb)
+prettify(summary(fit_poly_imdb))
 fit_polym = lm(my_rating ~ polym(imdb_rating, imdb_count, award_count, degree=5, raw=TRUE),data=continuous_movies) # fitting with a very big polynomial
 s_polym = summary(fit_polym)
 s_polym$adj.r.squared
-fit_interaction = lm(my_rating~imdb_rating*is_animation+imdb_rating*is_family + imdb_rating*is_adventure + imdb_rating*is_action+imdb_rating*is_drama+imdb_rating*is_comedy+imdb_rating*is_thriller+imdb_rating*is_scifi+imdb_rating*mpaa_name+revenue*is_animation+revenue*is_action+revenue*is_drama+revenue*is_comedy+revenue*is_thriller+revenue*is_scifi+log(imdb_count),data=continuous_movies)
-summary(fit_interaction)
-
-
+fit_interaction = lm(my_rating~imdb_rating*is_animation+imdb_rating*is_family + imdb_rating*is_adventure + imdb_rating*is_action+imdb_rating*is_drama+imdb_rating*is_comedy+imdb_rating*is_thriller+imdb_rating*is_scifi+revenue*is_animation+revenue*is_action+revenue*is_drama+revenue*is_comedy+revenue*is_thriller+revenue*is_scifi+log(imdb_count)+imdb_rating*is_rated_r+imdb_rating*is_rated_nr+imdb_rating*is_rated_pg13+imdb_rating*is_rated_nr+imdb_rating*is_rated_g,data=continuous_movies)
+prettify(summary(fit_interaction))
+```
+```{r polynomial_interaction_plot, echo=FALSE}
 plot(continuous_movies$my_rating, fit_poly_imdb$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_polym$fitted.values,col="aquamarine3")
 points(continuous_movies$my_rating,fit_interaction$fitted.values,col="firebrick4")
@@ -287,14 +308,18 @@ The multiple polynomial has a very solid r squared: `r s_polym$adj.r.squared`. H
 $$
 imdbrating^2+imdbcount+awardcount^2
 $$
-Finally, the interaction terms are not particularly useful as none of them are significant. In fact, the only 2 things the model finds significant are imdb_rating, and log(imdb_count) which are present in fit_log_count.
+Finally, the interaction terms are not particularly useful as only 2 of them are significant: is_rated_r, and is_drama. Besides those, the only 2 things the model finds significant are imdb_rating, and log(imdb_count) which are present in fit_log_count.
 
 ```{r anova_log_count}
 anova(fit_log_count, fit_interaction)
 ```
-This results in the two models not being significantly based on anova.
+This results in the two models not being significantly different based on anova.
 
 ## Ridge and Lasso {.tabset}
+```{r conditional_block5_5, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r load_glmnet, include=FALSE}
 library(glmnet)
 set.seed(1)
@@ -310,18 +335,18 @@ fit_lm = lm(my_rating ~ sqrt(imdb_count)+ imdb_rating + sqrt(award_count), data 
 ```{r ridge}
 fit_ridge = glmnet(X,y,alpha=0) # ridge fit
 fit.cv.ridge = cv.glmnet(X,y,alpha=0)
-plot(fit.cv.ridge)
+# plot(fit.cv.ridge)
 ```
 
 ### Lasso
 ```{r lasso}
 fit_lasso = glmnet(X,y,alpha=1) # lasso fit
 fit.cv.lasso = cv.glmnet(X,y,alpha=1)
-plot(fit.cv.lasso)
+# plot(fit.cv.lasso)
 ```
 
 ### Comparison
-```{r compare_glmnet}
+```{r compare_glmnet, echo=FALSE}
 beta_hat_mlr = coef(fit_lm)
 beta_hat_ridge = coef(fit.cv.ridge, s = "lambda.1se")
 beta_hat_lasso = coef(fit.cv.lasso, s = "lambda.1se")
@@ -341,7 +366,7 @@ abline(0,1)
 X2 = model.matrix(~.-name-my_rating+log(imdb_count)+log(tmdb_count)+log(imdb_us_count)+log(imdb_not_us_count), data=continuous_movies)
 fit_lasso_full = glmnet(X2,y,alpha=1) # lasso fit
 fit.cv.lasso_full = cv.glmnet(X2,y,alpha=1)
-plot(fit.cv.lasso_full)
+# plot(fit.cv.lasso_full)
 ```
 
 ### Comparison Full
@@ -349,7 +374,8 @@ plot(fit.cv.lasso_full)
 beta_hat_mlr_full = coef(fit_full)
 beta_hat_lasso_full = coef(fit.cv.lasso_full, s = "lambda.1se")
 cbind(beta_hat_mlr_full, beta_hat_lasso_full)
-
+```
+```{r compare_glmnet_full_plot, echo=FALSE}
 plot(continuous_movies$my_rating,predict(glmnet(X2,y,alpha=0),as.matrix(X2),s=fit.cv.lasso_full$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Full GLMNET My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_mlr_full$fitted.values,col="aquamarine3")
 legend(x = "topleft", title="Models", 
@@ -372,6 +398,10 @@ When comparing the full models, fit_lasso is highly predictive. Out of the 65 in
 
 
 ## Steps with AIC and BIC {.tabset}
+```{r conditional_block5_6, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r leaps}
 library(leaps) # procedure from lab
 fit_null = lm(my_rating~1, data=continuous_movies) # create a null fit to just an intercept
@@ -379,16 +409,17 @@ fit_null = lm(my_rating~1, data=continuous_movies) # create a null fit to just a
 ```{r anova}
 anova(fit_null,fit_full,test='F') # make sure that the full fit is more significant than the null fit
 ```
-Because the p-value for the ful model is significant in comparison to the null model, it makes sense to continue with AIC and BIC to find a significant model. The use of AIC and BIC is to penalize adding more parameters because any parameter improves the fit. 
+Because the p-value for the full model is significant in comparison to the null model, it makes sense to continue with AIC and BIC to find a significant model. The use of AIC and BIC is to penalize adding more parameters because any parameter improves the fit. 
 ```{r aic_bic, results='hide'}
 fit_aic = step(fit_null,list(upper=fit_full),direction='forward') # run AIC
 n = nrow(continuous_movies)
 fit_bic = step(fit_null,list(upper=fit_full),direction='forward',k=log(n)) # run BIC
 ```
 ```{r compare_aic_bic}
-summary(fit_aic)
-summary(fit_bic)
-AIC(fit_bic)
+prettify(summary(fit_aic))
+prettify(summary(fit_bic))
+```
+```{r compare_aic_bic_plot, echo=FALSE}
 plot(continuous_movies$my_rating, fit_aic$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_bic$fitted.values,col="aquamarine3")
 legend(x = "topleft", title="Models", 
@@ -400,6 +431,10 @@ abline(0,1)
 AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholoson, is_adventure, and imdb_rating. This is unique to this model and the full model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a signifcant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. Based on these selctions, BIC avoids the flaw of lasso including multiple highly correlated variables. Both full lasso and BIC include is_john_williams as the only dummy variable. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
 
 ## General Additive Models {.tabset}
+```{r conditional_block5_7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('<a href="#top">Back to top</a>')
+```
+
 ```{r load_mgcv, include=FALSE}
 library(mgcv)
 ```
@@ -416,7 +451,7 @@ summary(fit_gam2)
 ```
 
 ### Comparison
-```{r}
+```{r, echo=FALSE}
 plot(continuous_movies$my_rating, fit_gam1$fitted.values,xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="My Rating vs Fitted Values",col="orchid")
 points(continuous_movies$my_rating,fit_gam2$fitted.values,col="aquamarine3")
 legend(x = "topleft", title="Models", bg="transparent",
@@ -429,9 +464,7 @@ abline(0,1)
 plot(fit_gam1)
 plot(fit_gam2)
 ```
-The fit plots have been withheld for spacing reasons. 
-For the first gam:
-IMDB rating and metacritic rating are linear. TMDB rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in TMDB rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. IMDB count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating. IMDB arithmetic rating is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the public IMDB rating is calculated vs the arithmetic mean. The public IMDB rating is calculated using a secret formula to prevent review bombing and is actually a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean and that the weighted average used by IMDB is useful. 
+GAM fit plots withheld for spacing reasons. Based on the GAM fit plots, IMDB rating and metacritic rating are linear. TMDB rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in TMDB rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. IMDB count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating. IMDB arithmetic rating is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the public IMDB rating is calculated vs the arithmetic mean. The public IMDB rating is calculated using a secret formula to prevent review bombing and is actually a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean and that the weighted average used by IMDB is useful. 
 
 ```{r budget_0, include=FALSE}
 budget_not0 = continuous_movies%>%filter(budget!=0)
@@ -439,7 +472,7 @@ budget_0 = continuous_movies%>%filter(budget==0)
 budget_not0 = mean(budget_not0$imdb_count)
 budget_0 = mean(budget_0$imdb_count)
 ```
-For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, more than 10 times smaller.
+For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, `r budget_not0/budget_0` times smaller.
 
 # Summary and discussion 
 ```{r conditional_block6, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
@@ -486,6 +519,12 @@ high_residuals = continuous_movies %>% mutate(
 )
 ggplot(high_residuals) + xlim(c(0,100)) + ylim(c(0,100)) + geom_point(data=high_residuals, aes(x = my_rating, y = fit_bic$fitted.values), color=ifelse(high_residuals$label != '',"firebrick4","aquamarine3")) + geom_abline(aes(intercept=0,slope=1)) + labs(x="My Rating",y="Fitted Values", title="BIC My Rating vs Fitted Values") + geom_text_repel(data=high_residuals, aes(x=my_rating, y=fitted, label=label),max.overlaps = Inf)
 ```
+
+## Diagnostics
+```{r bic_diagnostics, echo=FALSE}
+plot(fit_bic)
+```
+Out of the fit diagnostics, residuals vs fitted and residuals vs leverage both look good. The normal QQ plot tails off slightly below for higher theoretical quantiles but stays on the line for most of the points, This tailing off is because my ratings are bounded between 0 and 100 while a normal distribution is not. This result is not worrying and errors can be treated as Gaussian. The scale location plot contains a slightly downward slope at higher fitted values. This is okay because the data is much sparser at those values so the final model assumptions for MLR still hold.
 
 ## Predictions
 
@@ -622,4 +661,4 @@ cat('<a href="#top">Back to top</a>')
 #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
 Code and data included throughout.
 
-Datasets available on [Github](https://github.com/AidanG1/stat410) and on the hosted version of the html: [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf)
+Datasets available on [Github](https://github.com/AidanG1/stat410) and on the hosted version of the html: [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf).
