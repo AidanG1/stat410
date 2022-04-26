@@ -170,7 +170,7 @@ None of the variables are too highly related to my rating. The highest correlati
 Something important to note is that most variables in the dataset make sense linearly such as my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, other variables within a specific range work best if they are not transformed such as IMDB rating between 0 to 10, TMDB rating between 0 to 10, or Metacritic rating between 0 and 100. 
 To create the main dataset for analysis the first thing I did was deciding to interpolate null values rather than removing them The only category with null values was Metacritic rating since some movies are not on Metacritic. To interpolate Metacritic ratings, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
 The next step was to make dummy variables for MPAA ratings. The most common MPAA ratings for movies that I have seen are:
-`r sort(table(continuous_movies$mpaa_name), decreasing = TRUE)[1:5]`
+`r sort(table(movies$mpaa_name), decreasing = TRUE)[1:5]`
 After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns.
 Finally, it was time to use dplyr to get the dataset. I began by arranging by IMDB rating since Metacritic ratings are most related to IMDB ratings. Then, I selected the desired columns from the larger dataset. After that, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
 
