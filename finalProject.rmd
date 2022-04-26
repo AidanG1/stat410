@@ -31,7 +31,7 @@ options(digits = 2)
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
-# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="65%", fig.align = 'center')
+# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
 # SHOW_BACK_TO_TOP=FALSE
 # for html with svg
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
@@ -167,9 +167,10 @@ if (USE_CACHED) {
 }
 cor_matrix = continuous_movies %>% select(-name) %>% cor()# creating correlation matrix
 kable(cor_matrix[1,])
+```
+```{r correlation_boxplot, include=FALSE}
 boxplot(cor_matrix[1,][2:length(cor_matrix[1,])], main="Boxplot of Correlations of 65 Covariates to My Rating")
 ```
-
 None of the variables are too highly related to my rating. The highest correlations are to imdb_rating and tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Moreover, imdb_ratings and tmdb_rating are also correlated (r=`r cor(continuous_movies$imdb_rating, continuous_movies$tmdb_rating)`). Metacritic_rating and imdb_median have weaker correlations, r=`r cor(continuous_movies$imdb_rating, continuous_movies$metacritic_rating)` and r=`r cor(continuous_movies$imdb_rating, continuous_movies$imdb_median)`, respectively. A similar story holds true for the count variables imdb_count, imdb_us_count, and imdb_not_us_count. The correlation between log(imdb_count) and log(tmdb_count) is even r=`r cor(log(continuous_movies$imdb_count), log(continuous_movies$tmdb_count))`.
 Something important to note is that most variables in the dataset work linearly like my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, other variables within a specific range work best if they are not transformed such as imdb_rating between 0 to 10, tmdb_rating between 0 to 10, or metacritic_rating between 0 and 100. 
 To create the main dataset for analysis, the first thing I did was deciding to interpolate null values rather than removing them. The only variable with null values was metacritic_rating since some movies are not on Metacritic. To interpolate metacritic_rating, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
@@ -479,7 +480,7 @@ abline(0,1)
 plot(fit_gam1)
 plot(fit_gam2)
 ```
-GAM fit plots withheld for spacing reasons. Based on the GAM fit plots, IMDB rating and metacritic rating are linear. TMDB rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in TMDB rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. IMDB count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating. IMDB arithmetic rating is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the public IMDB rating is calculated vs the arithmetic mean. The public IMDB rating is calculated using a secret formula to prevent review bombing and is actually a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean and that the weighted average used by IMDB is useful. 
+GAM fit plots withheld for spacing reasons. Based on the GAM fit plots, imdb_rating and metacritic_rating are linear. Tmdb_rating is linear until the rating reaches about 6 before increase in slope between 6.5 and 7.5 before flattening. This means that the impact of an increase in tmdb_rating from 7.5 to 7.6 is expected to have a larger impact on my rating than an increase from 6.4 to 6.5. Imdb_count has a very steep slope until it reaches around 500,000 before flattening out. This impact is fixed by using a log transformation Finally, runtime actually flips. When runtime is under an hour, an increase in runtime leads to an expected increase in my rating. However, as runtime passes 150 minutes, a higher runtime means an expected decrease in my rating. Imdb_arithmetic_mean is a new addition to this model and actually has a negative beta model. This exemplifies the slight difference in the way the advertised imdb_rating is calculated vs the arithmetic mean. Imdb_rating is calculated using a secret formula to prevent review bombing and is a weighted average. This reveals that using the weighted mean is more powerful than the arithmetic mean in this case and that the weighted average used by IMDB is useful. 
 
 ```{r budget_0, include=FALSE}
 budget_not0 = continuous_movies%>%filter(budget!=0)
@@ -496,9 +497,9 @@ cat('<a href="#top">Back to top</a>')
 
 #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
 
-Ultimately, the model that I ended up liking the most was the BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams. The model has an adjusted r squared of `r summary(fit_bic)$adj.r.squared`. This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a very similar r squared, it is the better choice for interpretability. 
+Ultimately, the model that I ended up liking the most was the MLR chosen by BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams (adj r squared=`r summary(fit_bic)$adj.r.squared`). This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a nearly identical r squared, it is the better choice. 
 
-My largest conclusion in this project is that predicting my ratings is difficult to do accurately and that getting an adjusted r squared 0f 0.47 is good, especially since the model is highly interpretable and does not overfit. I reached this conclusion since I fit many different models and ended up with results consistently similar despite highly different betas. Even with these varied betas, models consistently overpredicted low values and undepredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
+My largest conclusion in this project is that predicting my ratings is difficult to do accurately and that getting an adj r squared of 0.47 is good, especially since the model is interpretable and does not overfit. I reached this conclusion since I fit many different models and ended up with similar adj r squareds despite different betas. Even with these varied betas, models consistently overpredicted low values and underpredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
 
 ```{r coef, include=FALSE}
 coefs = coef(summary(fit_bic))
@@ -538,7 +539,7 @@ ggplot(high_residuals) + xlim(c(0,100)) + ylim(c(0,100)) + geom_point(data=high_
 ```{r conditional_block7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
-```{r bic_diagnostics, echo=FALSE, out.width='100%'}
+```{r bic_diagnostics, echo=FALSE}
 par(mfrow=c(2,2))
 plt_bic = plot(fit_bic)
 par(mfrow=c(1,1))
@@ -549,16 +550,16 @@ Out of the fit diagnostics, residuals vs fitted and residuals vs leverage both l
 ```{r conditional_block8, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
+<!--
+The movies being predicted are the most reviewed movies on IMDB that I have not seen. In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.-->
 
-The movies being predicted are the most reviewed movies on IMDB that I have not seen. <!--In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.-->
-
-```{r predictions, include=TRUE, results='markup'}
-most_reviewed = data.frame(imdb_rating=c(8.3,8.6,8.6,8.5,8.2,8.6,7.9,8.4,8.5,8.4,1.9),imdb_count=c(1389883,1381370,1342619,1282577,1253738,1253525,1130852,1130000,1094160,1014965,38184),is_john_williams=c(0,0,1,0,0,0,0,0,0,0,0))
+```{r predictions, echo=FALSE, results='markup'}
+most_reviewed = data.frame(imdb_rating=c(8.8,8.3,8.6,8.6,8.2,8.6,7.9,8.4,7.9,1.9,5),imdb_count=c(1794349,1389883,1381370,1342619,1253738,1253525,1130852,1014965,350258,38184,5695),is_john_williams=c(0,0,0,1,0,0,0,0,1,0,0))
 predictions = predict(fit_bic, most_reviewed, interval="prediction")
-kable(cbind(Movie=c('Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'The Departed', 'Shutter Island', 'The Green Mile', 'Titanic', 'American Beauty', 'American History X', 'Braveheart', 'The Hottie & the Nottie'),predictions))
+kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Shutter Island', 'The Green Mile', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
 ```
 
-These predictions are mostly reasonable but they do fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible and the model will attempt to avoid it.
+These predictions are able to be performed since I am using my final was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible and the model will attempt to avoid it.
 
 Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and with careful variable, it is possible to get a relatively accurate model with high interpretability.
 
@@ -569,11 +570,7 @@ cat('<a href="#top">Back to top</a>')
 
 #### What are the sources for the data and any additional statistical resources that you used to support your analysis?
 
-Data sources:
-
-* [TMDB API](https://www.themoviedb.org/documentation/api)
-* [IMDB Website](https://www.imdb.com/)
-* [Personal Movie Website](https://www.tradethisandthat.com/movies/)
+My data sources are [TMDB API](https://www.themoviedb.org/documentation/api), [IMDB Website](https://www.imdb.com/), [Personal Movie Website](https://www.tradethisandthat.com/movies/)
 ```{py django, results=FALSE}
 from django.core.management.base import BaseCommand
 from movies.models import *
@@ -681,6 +678,4 @@ cat('<a href="#top">Back to top</a>')
 ```
 
 #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
-Code and data included throughout.
-
-Datasets available on [Github](https://github.com/AidanG1/stat410) and on the hosted version of the html: [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies.csv](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf).
+Datasets available on [Github](https://github.com/AidanG1/stat410), the [hosted website](https://stat.aidang.me/), [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies.csv](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf).
