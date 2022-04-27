@@ -1,9 +1,12 @@
 ---
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+# knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "April 29th, 2022"
 output:
+  pdf_document:
+    # toc: yes
+    # toc_depth: '3'
   prettydoc::html_pretty:
     toc: yes
     toc_depth: 3
@@ -12,9 +15,6 @@ output:
     df_print: paged
     includes:
       in_header: header.html
-  pdf_document:
-    # toc: yes
-    # toc_depth: '3'
   html_document:
     toc: yes
     toc_depth: '3'
@@ -31,11 +31,11 @@ options(digits = 2)
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
-# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
-# SHOW_BACK_TO_TOP=FALSE
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
+SHOW_BACK_TO_TOP=FALSE
 # for html with svg
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
-SHOW_BACK_TO_TOP=TRUE
+# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
+# SHOW_BACK_TO_TOP=TRUE
 ```
 
 ```{r imports, echo=FALSE, cols.min.print=3}
@@ -184,7 +184,7 @@ kable(data.frame(Comedy=sum(continuous_movies$is_comedy),Adventure=sum(continuou
 
 Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to be significant and have them whittled down through variable selection methods. 
 An extra step was creating a caching method since creating continuous_movies takes a few minutes each time (for just cast and crew, it performs `r 32*length(credits$person_id)` calculations). 
-Looking at the correlation matrix of my_rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For MPAA ratings, R has a positive correlation and PG-13 has a negative correlation. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, Matt Damon, and Stan Lee.
+Looking at the correlation matrix of my_rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For MPAA ratings, R has a positive correlation and PG-13 has a negative correlation. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
 
 ```{r pairs, echo=FALSE}
 high_cor_cm = continuous_movies %>% select(my_rating,imdb_rating,tmdb_rating,imdb_count,metacritic_rating,award_count)
@@ -550,18 +550,16 @@ Out of the fit diagnostics, residuals vs fitted and residuals vs leverage both l
 ```{r conditional_block8, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
-<!--
-The movies being predicted are the most reviewed movies on IMDB that I have not seen. In order they are Inglorious Basterds, The Silence of the Lambs, Saving Private Ryan, The Departed, Shutter Island, The Green Mile, Titanic, American Beauty, American History X, Braveheart, and The Hottie & the Nottie.-->
 
 ```{r predictions, echo=FALSE, results='markup'}
-most_reviewed = data.frame(imdb_rating=c(8.8,8.3,8.6,8.6,8.2,8.6,7.9,8.4,7.9,1.9,5),imdb_count=c(1794349,1389883,1381370,1342619,1253738,1253525,1130852,1014965,350258,38184,5695),is_john_williams=c(0,0,0,1,0,0,0,0,1,0,0))
+most_reviewed = data.frame(imdb_rating=c(8.8,8.3,8.6,8.6,8.2,7.9,8.4,7.9,1.9,5),imdb_count=c(1794349,1389883,1381370,1342619,1253738,1130852,1014965,350258,38184,5695),is_john_williams=c(0,0,0,1,0,0,0,1,0,0))
 predictions = predict(fit_bic, most_reviewed, interval="prediction")
-kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Shutter Island', 'The Green Mile', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
+kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Shutter Island', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
 ```
 
-These predictions are able to be performed since I am using my final was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible and the model will attempt to avoid it.
+These predictions intervals are computable since I my final model was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible.
 
-Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and with careful variable, it is possible to get a relatively accurate model with high interpretability.
+Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and  it is possible to get a relatively accurate model with high interpretability. I can now use the model that I found to have a better idea of which movies to watch and which to avoid.
 
 # References 
 ```{r conditional_block9, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
