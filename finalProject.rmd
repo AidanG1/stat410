@@ -1,12 +1,13 @@
 ---
-# knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
-title: "Stat 410 Aidan's Movies"
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+title: "\\vspace{-2cm} Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "April 29th, 2022"
+fontsize: 12pt
+geometry: margin=1in
+mainfont: Times New Roman
+colorlinks: yes
 output:
-  pdf_document:
-    # toc: yes
-    # toc_depth: '3'
   prettydoc::html_pretty:
     toc: yes
     toc_depth: 3
@@ -15,6 +16,9 @@ output:
     df_print: paged
     includes:
       in_header: header.html
+  pdf_document:
+    # toc: yes
+    # toc_depth: '3'
   html_document:
     toc: yes
     toc_depth: '3'
@@ -31,11 +35,11 @@ options(digits = 2)
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
-SHOW_BACK_TO_TOP=FALSE
+# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
+# SHOW_BACK_TO_TOP=FALSE
 # for html with svg
-# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
-# SHOW_BACK_TO_TOP=TRUE
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
+SHOW_BACK_TO_TOP=TRUE
 ```
 
 ```{r imports, echo=FALSE, cols.min.print=3}
@@ -57,30 +61,36 @@ cat("# [Aidan's Movies](https://www.tradethisandthat.com/movies/)
 )
 ```
 
+\vspace{-1cm}
 # Project statement
 ```{r conditional_block1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
 
-#### What is the purpose of your analysis? What effect are you investigating? Why?
+<!-- #### What is the purpose of your analysis? What effect are you investigating? Why? -->
 The purpose of my analysis is to determine what movies I will enjoy the most. I will do this by creating a model with the response variable of how much I liked a movie out of 100 and predicting it with data on various movie reviews, genres, cast and crew, and more. I am doing this so that I can figure out which movies I will want to watch because I can be confident that I will enjoy them.
 
+
+\vspace{-1cm}
 # Data description
+\vspace{-0.4cm}
 ```{r conditional_block2, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-#### How were the data collected? How do these data help you answer the relevant research questions?
-The data was collected over time by me. A partial dataset in json form is available on my website here: https://www.tradethisandthat.com/movies/api/all_movies/ and a full version is available on the project website: https://stat.aidang.me/continuous_movies.csv. In the references, there is python code I wrote to turn the mySQL database into a csv using Django.
-Data from TMDB was collected using their API. Data from IMDB was collected by web scraping their pages for awards and rating distributions. My rating and metacritic ratings are collected by me.
+<!-- #### How were the data collected? How do these data help you answer the relevant research questions? -->
+The data was collected over time by me. A partial dataset in json form is available on my [website](https://www.tradethisandthat.com/movies/api/all_movies/) and a full version is available on the [project website](https://stat.aidang.me/continuous_movies.csv). 
+Data from TMDB was collected using their API. Data from IMDB was collected by web scraping their pages for awards and rating distributions. My rating and metacritic ratings are collected by me. This data is relevant since my ratings would be related to ratings from critics as well as attributes of movies like genres.
 
-# Exploratory data analysis 
+\vspace{-1cm}
+# Exploratory data analysis
+\vspace{-0.4cm}
 ```{r conditional_block3, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-#### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns?
+<!-- #### What are the basic features of the data? What are the variables? How are the variables related? Are there any unusual patterns? -->
 
 ```{r movies_print, cols.min.print=3}
 movies_to_print = movies %>% select(name, my_rating, imdb_rating, metacritic_rating, tmdb_rating, imdb_count, tmdb_count, release_date, revenue, budget, award_count, franchise_name, mpaa_name, genres_names, production_company_names)
@@ -171,9 +181,9 @@ kable(cor_matrix[1,])
 ```{r correlation_boxplot, include=FALSE}
 boxplot(cor_matrix[1,][2:length(cor_matrix[1,])], main="Boxplot of Correlations of 65 Covariates to My Rating")
 ```
-None of the variables are too highly related to my rating. The highest correlations are to imdb_rating and tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Moreover, imdb_ratings and tmdb_rating are also correlated (r=`r cor(continuous_movies$imdb_rating, continuous_movies$tmdb_rating)`). Metacritic_rating and imdb_median have weaker correlations, r=`r cor(continuous_movies$imdb_rating, continuous_movies$metacritic_rating)` and r=`r cor(continuous_movies$imdb_rating, continuous_movies$imdb_median)`, respectively. A similar story holds true for the count variables imdb_count, imdb_us_count, and imdb_not_us_count. The correlation between log(imdb_count) and log(tmdb_count) is even r=`r cor(log(continuous_movies$imdb_count), log(continuous_movies$tmdb_count))`.
-Something important to note is that most variables in the dataset work linearly like my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, other variables within a specific range work best if they are not transformed such as imdb_rating between 0 to 10, tmdb_rating between 0 to 10, or metacritic_rating between 0 and 100. 
-To create the main dataset for analysis, the first thing I did was deciding to interpolate null values rather than removing them. The only variable with null values was metacritic_rating since some movies are not on Metacritic. To interpolate metacritic_rating, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
+None of the variables are too highly related to my rating. The highest correlations are to imdb_rating and tmdb_rating. The other variables above 0.6 correlation are variables that are highly correlated with imdb_rating like imdb_arithmetic_mean, imdb_us_rating, imdb_top_1000_rating, and imdb_not_us_rating. Moreover, imdb_rating and tmdb_rating are also correlated (r=`r cor(continuous_movies$imdb_rating, continuous_movies$tmdb_rating)`). Metacritic_rating and imdb_median have weaker correlations, r=`r cor(continuous_movies$imdb_rating, continuous_movies$metacritic_rating)` and r=`r cor(continuous_movies$imdb_rating, continuous_movies$imdb_median)`, respectively. A similar story holds true for the count variables imdb_count, imdb_us_count, and imdb_not_us_count. The correlation between log(imdb_count) and log(tmdb_count) is even r=`r cor(log(continuous_movies$imdb_count), log(continuous_movies$tmdb_count))`.
+Most variables in the dataset work linearly like my_rating and imdb_rating. Since my_rating is on a 0 to 100 scale, other un-transformed variables within a specific range work best such as imdb_rating between 1 to 10, tmdb_rating between 1 to 10, or metacritic_rating between 0 and 100. 
+To create the main dataset for analysis, I interpolated null values rather than removing them. The only variable with null values was metacritic_rating since some movies are not on Metacritic. To interpolate metacritic_rating, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
 The next step was to make dummy variables for MPAA ratings. The most common MPAA ratings for movies that I have seen are:
 `r kable(t(sort(table(movies$mpaa_name), decreasing = TRUE)[1:5]))`
 After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns. Next, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
@@ -182,22 +192,23 @@ After that, I wrote a function to check if a person of a specific id appeared in
 kable(data.frame(Comedy=sum(continuous_movies$is_comedy),Adventure=sum(continuous_movies$is_adventure),Action=sum(continuous_movies$is_action),Drama=sum(continuous_movies$is_drama),Family=sum(continuous_movies$is_family),`Science Fiction`=sum(continuous_movies$is_scifi),Animation=sum(continuous_movies$is_animation),Thriller=sum(continuous_movies$is_thriller)))
 ```
 
-Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to be significant and have them whittled down through variable selection methods. 
-An extra step was creating a caching method since creating continuous_movies takes a few minutes each time (for just cast and crew, it performs `r 32*length(credits$person_id)` calculations). 
+Choosing cast and crew members was more difficult. I selected people that I thought had the ability to make movies more than the sum of their parts. I decided to choose many more people than I expected to be significant and have them whittled down through variable selection methods. An extra step was creating a caching method since creating continuous_movies takes a few minutes each time (for just cast and crew, it performs `r 32*length(credits$person_id)` calculations).
 Looking at the correlation matrix of my_rating to all the variables in the final dataset, I noticed that imdb_rating is most significant. Barely behind are tmdb_rating, imdb_arithmetic_mean, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, imdb_rating_percentile, and tmdb_rating_percentile. None of these are surprising and each of them are correlated with each other. There were also reasonably strong correlations between my_rating and imdb_count with less strong ones to award_count, runtime, and revenue. In terms of genres, the highest positive correlation was to drama with large negative correlations to comedy and family. For MPAA ratings, R has a positive correlation and PG-13 has a negative correlation. For people, the highest positive correlations were to John Williams, Wally Pfister, Christopher Nolan, Harrison Ford, George Lucas, and Matt Damon.
 
-```{r pairs, echo=FALSE}
+```{r pairs, echo=FALSE, eval=SHOW_BACK_TO_TOP}
 high_cor_cm = continuous_movies %>% select(my_rating,imdb_rating,tmdb_rating,imdb_count,metacritic_rating,award_count)
 pairs(high_cor_cm) # graphing pairs of specific values
 ```
 
+
+\vspace{-1cm}
 # Data analysis
+\vspace{-0.4cm}
 ```{r conditional_block4, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-#### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question?
-I tried fitting many different models including SLRs, MLRs, montone transformations, ridge, lasso, and GAMs.
+<!-- #### What is the statistical model (or models) that you are using? Why is this an appropriate model to use? Do the model diagnostics contradict the model assumptions? How do you interpret the results from the statistical analysis in the context of your research question? -->
 
 ## SLR
 ```{r conditional_block5_1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
@@ -356,20 +367,24 @@ fit.cv.lasso = cv.glmnet(X,y,alpha=1)
 # plot(fit.cv.lasso)
 ```
 
-### Comparison
+```{r conditional_block_glmnet3-1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('### Comparison')
+```
 ```{r compare_glmnet, echo=FALSE}
 beta_hat_mlr = coef(fit_lm)
 beta_hat_ridge = coef(fit.cv.ridge, s = "lambda.1se")
 beta_hat_lasso = coef(fit.cv.lasso, s = "lambda.1se")
 cbind(beta_hat_mlr, beta_hat_ridge, beta_hat_lasso)
 
-plot(continuous_movies$my_rating,predict(glmnet(X,y,alpha=0),as.matrix(X),s=fit.cv.ridge$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="GLMNET My Rating vs Fitted Values",col="orchid")
-points(continuous_movies$my_rating,predict(glmnet(X,y,alpha=1),as.matrix(X),s=fit.cv.lasso$lambda.1se),col="aquamarine3")
-points(continuous_movies$my_rating,fit_lm$fitted.values,col="firebrick4")
-legend(x = "topleft", title="Models", 
-       legend=c("Ridge", "Lasso", "MLR"), 
-       fill = c("orchid","aquamarine3",'firebrick4'))
-abline(0,1)
+if (SHOW_BACK_TO_TOP){
+  plot(continuous_movies$my_rating,predict(glmnet(X,y,alpha=0),as.matrix(X),s=fit.cv.ridge$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="GLMNET My Rating vs Fitted Values",col="orchid")
+  points(continuous_movies$my_rating,predict(glmnet(X,y,alpha=1),as.matrix(X),s=fit.cv.lasso$lambda.1se),col="aquamarine3")
+  points(continuous_movies$my_rating,fit_lm$fitted.values,col="firebrick4")
+  legend(x = "topleft", title="Models", 
+         legend=c("Ridge", "Lasso", "MLR"), 
+         fill = c("orchid","aquamarine3",'firebrick4'))
+  abline(0,1)
+}
 ```
 
 ```{r conditional_block_glmnet4, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
@@ -382,19 +397,23 @@ fit.cv.lasso_full = cv.glmnet(X2,y,alpha=1)
 # plot(fit.cv.lasso_full)
 ```
 
-### Comparison Full
+```{r conditional_block_glmnet4-1, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
+cat('### Comparison Full')
+```
 ```{r compare_glmnet_full}
 beta_hat_mlr_full = coef(fit_full)
 beta_hat_lasso_full = coef(fit.cv.lasso_full, s = "lambda.1se")
 cbind(beta_hat_mlr_full, beta_hat_lasso_full)
 ```
 ```{r compare_glmnet_full_plot, echo=FALSE}
-plot(continuous_movies$my_rating,predict(glmnet(X2,y,alpha=0),as.matrix(X2),s=fit.cv.lasso_full$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Full GLMNET My Rating vs Fitted Values",col="orchid")
-points(continuous_movies$my_rating,fit_mlr_full$fitted.values,col="aquamarine3")
-legend(x = "topleft", title="Models", 
-       legend=c("Lasso Full", "MLR Full"), 
-       fill = c("orchid","aquamarine3"))
-abline(0,1)
+if (SHOW_BACK_TO_TOP){
+  plot(continuous_movies$my_rating,predict(glmnet(X2,y,alpha=0),as.matrix(X2),s=fit.cv.lasso_full$lambda.1se),xlim=c(0,100),ylim=c(0,100),xlab="My Rating",ylab="Fitted Values",main="Full GLMNET My Rating vs Fitted Values",col="orchid")
+  points(continuous_movies$my_rating,fit_mlr_full$fitted.values,col="aquamarine3")
+  legend(x = "topleft", title="Models", 
+         legend=c("Lasso Full", "MLR Full"), 
+         fill = c("orchid","aquamarine3"))
+  abline(0,1)
+}
 ```
 
 Adjusted R Squared at 1 standard error for ridge and lasso:
@@ -490,12 +509,15 @@ budget_0 = mean(budget_0$imdb_count)
 ```
 For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, `r budget_not0/budget_0` times smaller.
 
-# Summary and discussion 
+
+\vspace{-1cm}
+# Summary and discussion
+\vspace{-0.4cm}
 ```{r conditional_block6, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-#### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research?
+<!-- #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research? -->
 
 Ultimately, the model that I ended up liking the most was the MLR chosen by BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams (adj r squared=`r summary(fit_bic)$adj.r.squared`). This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a nearly identical r squared, it is the better choice. 
 
@@ -552,23 +574,28 @@ cat('<a href="#top">Back to top</a>')
 ```
 
 ```{r predictions, echo=FALSE, results='markup'}
-most_reviewed = data.frame(imdb_rating=c(8.8,8.3,8.6,8.6,8.2,7.9,8.4,7.9,1.9,5),imdb_count=c(1794349,1389883,1381370,1342619,1253738,1130852,1014965,350258,38184,5695),is_john_williams=c(0,0,0,1,0,0,0,1,0,0))
+most_reviewed = data.frame(imdb_rating=c(8.8,8.3,8.6,8.6,7.9,8.4,7.9,1.9,5),imdb_count=c(1794349,1389883,1381370,1342619,1130852,1014965,350258,38184,5695),is_john_williams=c(0,0,0,1,0,0,1,0,0))
 predictions = predict(fit_bic, most_reviewed, interval="prediction")
-kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Shutter Island', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
+kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
 ```
 
 These predictions intervals are computable since I my final model was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible.
 
 Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and  it is possible to get a relatively accurate model with high interpretability. I can now use the model that I found to have a better idea of which movies to watch and which to avoid.
 
-# References 
 ```{r conditional_block9, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
-cat('<a href="#top">Back to top</a>')
-```
-
-#### What are the sources for the data and any additional statistical resources that you used to support your analysis?
+cat('
+\vspace{-1cm}
+# References
+\vspace{-0.4cm}
+<a href="#top">Back to top</a>
 
 My data sources are [TMDB API](https://www.themoviedb.org/documentation/api), [IMDB Website](https://www.imdb.com/), [Personal Movie Website](https://www.tradethisandthat.com/movies/)
+    ')
+```
+
+<!-- #### What are the sources for the data and any additional statistical resources that you used to support your analysis? -->
+
 ```{py django, results=FALSE}
 from django.core.management.base import BaseCommand
 from movies.models import *
@@ -670,10 +697,13 @@ class Command(BaseCommand):
                         [credit.uuid, credit.person_id, credit.movie_id, credit.department, credit.character_job,
                          credit.order, credit.order_score, credit.credit_order_weighted_score])
 ```
-# Code and data 
+
+\vspace{-1cm}
+# Code and data
+\vspace{-0.4cm}
 ```{r conditional_block10, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
 cat('<a href="#top">Back to top</a>')
 ```
 
-#### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors.
+<!-- #### Include the code and data to reproduce your analysis. The code should include clear comments and should run correctly without errors. -->
 Datasets available on [Github](https://github.com/AidanG1/stat410), the [hosted website](https://stat.aidang.me/), [movie.csv](https://stat.aidang.me/movie.csv), [credit.csv](https://stat.aidang.me/credit.csv), [continuous_movies.csv](https://stat.aidang.me/continuous_movies.csv), and [pdf form](https://stat.aidang.me/finalProject.pdf).
