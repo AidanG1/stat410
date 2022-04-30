@@ -1,5 +1,5 @@
 ---
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+# knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 title: "\\vspace{-2cm} Stat 410 Aidan's Movies"
 author: "Aidan Gerber"
 date: "April 29th, 2022"
@@ -8,6 +8,9 @@ geometry: margin=1in
 mainfont: Times New Roman
 colorlinks: yes
 output:
+  pdf_document:
+    # toc: yes
+    # toc_depth: '3'
   prettydoc::html_pretty:
     toc: yes
     toc_depth: 3
@@ -16,9 +19,6 @@ output:
     df_print: paged
     includes:
       in_header: header.html
-  pdf_document:
-    # toc: yes
-    # toc_depth: '3'
   html_document:
     toc: yes
     toc_depth: '3'
@@ -35,11 +35,11 @@ options(digits = 2)
 # knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'png')
 # SHOW_BACK_TO_TOP=FALSE
 # for PDF no code
-# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
-# SHOW_BACK_TO_TOP=FALSE
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dev = 'png', results = 'hide', out.width="58%", fig.align = 'center')
+SHOW_BACK_TO_TOP=FALSE
 # for html with svg
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
-SHOW_BACK_TO_TOP=TRUE
+# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, dev = 'svglite', out.width="100%")
+# SHOW_BACK_TO_TOP=TRUE
 ```
 
 ```{r imports, echo=FALSE, cols.min.print=3}
@@ -186,7 +186,7 @@ Most variables in the dataset work linearly like my_rating and imdb_rating. Sinc
 To create the main dataset for analysis, I interpolated null values rather than removing them. The only variable with null values was metacritic_rating since some movies are not on Metacritic. To interpolate metacritic_rating, I created a basic MLR to predict them from movie characteristics that are not related to me or my ratings.
 The next step was to make dummy variables for MPAA ratings. The most common MPAA ratings for movies that I have seen are:
 `r kable(t(sort(table(movies$mpaa_name), decreasing = TRUE)[1:5]))`
-After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related with both movies and people so I checked those columns. Next, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
+After that, I wrote a function to check if a person of a specific id appeared in a movie and return 1 or 0. This combined the separate credits and movies tables. Credits are 1-to-1 related to both movies and people so I checked those columns. Next, I created dummy variables for both genres and crew. I chose every genre that I have seen more than 100 movies from. 
 
 ```{r, echo=FALSE, results='markup'}
 kable(data.frame(Comedy=sum(continuous_movies$is_comedy),Adventure=sum(continuous_movies$is_adventure),Action=sum(continuous_movies$is_action),Drama=sum(continuous_movies$is_drama),Family=sum(continuous_movies$is_family),`Science Fiction`=sum(continuous_movies$is_scifi),Animation=sum(continuous_movies$is_animation),Thriller=sum(continuous_movies$is_thriller)))
@@ -422,7 +422,7 @@ Adjusted R Squared at 1 standard error for ridge and lasso:
 kable(data.frame(`Lasso`=fit_ridge$dev.ratio[length(fit_ridge$dev.ratio)],`Ridge`=fit_lasso$dev.ratio[length(fit_lasso$dev.ratio)],`MLR`=summary(fit_lm)$adj.r.squared,`Full Lasso`=fit_lasso_full$dev.ratio[length(fit_lasso_full$dev.ratio)], `Full MLR`=summary(fit_full)$adj.r.squared))
 ```
 
-Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values IMDB count and IMDB rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
+Lasso and ridge result in a slight improvement over the MLR since they take advantage of the bias variance tradeoff. Looking at the beta values, the different models change the coefficients a lot despite getting similar results. MLR values imdb_count and imdb_rating much more than ridge or lasso. Lasso actually removes sqrt(award_count) to not much of a detriment.
 
 When comparing the full models, fit_lasso is highly predictive. Out of the 65 initial variables, it selects 12 variables. Each variables lasso selects has positive coefficients, so the interpretation of the model makes substantially more sense than the full model. However, the lasso model does include multiple versions of similar terms, indicating potential overfitting. For example, it includes imdb_rating, imdb_top_1000_rating, imdb_us_rating, imdb_not_us_rating, and imdb_rating_percentile — all of which are very similar. It repeats this flaw by including imdb_count, imdb_top_1000_count, and log(imdb_count). The only dummy variable lasso includes is is_john_williams.
 
@@ -458,7 +458,7 @@ legend(x = "topleft", title="Models",
 abline(0,1)
 ```
 
-AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholoson, is_adventure, and imdb_rating. This is unique to this model and the full model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a signifcant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. Based on these selctions, BIC avoids the flaw of lasso including multiple highly correlated variables. Both full lasso and BIC include is_john_williams as the only dummy variable. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
+AIC and BIC had very different results. The AIC resulted in my highest adjusted R^2 of any model (`r summary(fit_aic)$adj.r.squared`). The final AIC selected `r length(fit_aic$coefficients)` coefficients. This is very different than the BIC which selected `r length(fit_bic$coefficients)`. Only 3 variables in the AIC have negative betas, is_jack_nicholson, is_adventure, and imdb_rating. This is unique to this model and the full model and is possible because lots of people have highly positive coefficients and log(imdb_count) is also highly positive. Moreover, imdb_rating does not have a significant p-value in this model. The BIC chooses a much sparser with just imdb_rating, log(imdb_count), and is_john_williams. Based on these selections, BIC avoids the flaw of lasso including multiple highly correlated variables. Both full lasso and BIC include is_john_williams as the only dummy variable. John Williams is not only an excellent composer but links many of my favorite movies such as Indiana Jones and Star Wars while only appearing in 2 movies I rated below a 60: Close Encounters of the Third Kind and The Lost World: Jurassic Park. Even with such different models, both the AIC and BIC had similar adjusted r squared values and their adjusted r squared values were generally in line with other models.
 
 ## General Additive Models {.tabset}
 ```{r conditional_block5_7, echo=FALSE, results='asis', eval=SHOW_BACK_TO_TOP}
@@ -507,7 +507,7 @@ budget_0 = continuous_movies%>%filter(budget==0)
 budget_not0 = mean(budget_not0$imdb_count)
 budget_0 = mean(budget_0$imdb_count)
 ```
-For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important that a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, `r budget_not0/budget_0` times smaller.
+For budget, there is a quick slope upward at the beginning revealing that a percentage increase in budget is more important than a dollar amount increase. However, this should be taken with a grain of salt as there are flaws to using budget as a prediction metric. Firstly, movies have been made at all different times and budgets are not normalized for inflation. This harms the predictive power of using budget. Moreover, some movies do not have public budget information which is related to their popularity. The mean IMDB count for a movie with a budget that is not 0 is `r budget_not0` while for movies with a budget that is 0 the mean count is `r budget_0`, `r budget_not0/budget_0` times smaller.
 
 
 \vspace{-1cm}
@@ -519,7 +519,7 @@ cat('<a href="#top">Back to top</a>')
 
 <!-- #### What are the main conclusions of your analysis? What are the main limitations? What might be investigated in future research? -->
 
-Ultimately, the model that I ended up liking the most was the MLR chosen by BIC. This model includes imdb_rating, log(imdb_count), and is_john_williams (adj r squared=`r summary(fit_bic)$adj.r.squared`). This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a nearly identical r squared, it is the better choice. 
+Ultimately, the model that I ended up liking the most was the MLR chosen by BIC with imdb_rating, log(imdb_count), and is_john_williams (adj r squared=`r summary(fit_bic)$adj.r.squared`). This is very similar to the GAM version of the model which includes a smoothed version version of imdb_rating and imdb_count, a standard dummy variable of is_john_williams and an interaction term between is_john_williams and log(imdb_count). This resulted in an adjusted r squared of `r summary(fit_gam2)$r.sq`. Since the simple MLR found by BIC is much simpler and has a nearly identical r squared, it is the better choice. 
 
 My largest conclusion in this project is that predicting my ratings is difficult to do accurately and that getting an adj r squared of 0.47 is good, especially since the model is interpretable and does not overfit. I reached this conclusion since I fit many different models and ended up with similar adj r squareds despite different betas. Even with these varied betas, models consistently overpredicted low values and underpredicted high values. This makes sense considering each of the things that I am predicting based on are aggregate metrics. When trying to turn these aggregate metrics back to an individual prediction, the model hedges and predicts values generally closer to the center. This allows the model to miss by less when it is not particularly close.
 
@@ -579,7 +579,7 @@ predictions = predict(fit_bic, most_reviewed, interval="prediction")
 kable(cbind(Movie=c(' The Lord of the Rings 2001','Inglorious Basterds','The Silence of the Lambs', 'Saving Private Ryan', 'Titanic',  'Braveheart', 'Boyhood','The Hottie & the Nottie', 'The VelociPastor'),most_reviewed,predictions))
 ```
 
-These predictions intervals are computable since I my final model was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible.
+These prediction intervals are computable since my final model was a Gaussian MLR. They are mostly reasonable but fall within very large ranges. On the high end, the predictions get above 100 and on the low end they get below 0. I feel confident that I would rate nearly all of these movies within the given range; however, the ranges encompass over half of the rating space. These ranges means the model must hedge because it cannot continuously predict values of 90 for movies with ranges between 63 and 117 because the range on the upper end is impossible.
 
 Overall, predicting my movie ratings is very difficult to make highly accurate, but it is certainly possible to do much better than random guessing, and  it is possible to get a relatively accurate model with high interpretability. I can now use the model that I found to have a better idea of which movies to watch and which to avoid.
 
